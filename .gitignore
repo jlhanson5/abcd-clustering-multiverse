@@ -1,0 +1,18 @@
+# ABCD data, results and logs stay on this DUC/MCW-approved Mac. Code and docs only.
+data_derived/
+output/
+*.rds
+*.RData
+*.rda
+*.csv
+*.tsv
+*.xlsx
+*.dat
+*.txt
+*.log
+*.png
+*.pdf
+.Renviron
+.Rhistory
+.Rproj.user/
+.DS_Store

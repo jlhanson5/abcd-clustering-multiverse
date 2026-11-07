@@ -1,0 +1,196 @@
+# ABCD clustering multiverse: CBCL total problems × baseline income
+
+Started 2026-10-23. Asks how much subgroup solutions depend on the clustering
+method and analytic choices, and whether the link between poverty and
+membership in the highest-symptom class holds across that multiverse.
+
+Data: ABCD 5.1, read in place from
+`Dropbox/_Research_In_Progress/abcd-data-release-5.1/core`. Derived files are in
+`data_derived/` (Dropbox is approved storage for this project). No git.
+
+## Run order
+
+```
+Rscript 00_install.R          # once
+Rscript 01_data.R             # long.rds / wide.rds + output/logs/sample_flow.txt
+Rscript 02_spec.R             # specification table
+Rscript 03_run.R pilot 12     # fit all tasks (restartable); "full" for the full sample
+Rscript 04_poverty.R pilot    # relabel classes, multinomial poverty model per universe
+Rscript 05_agreement.R pilot  # pairwise ARI / NMI
+Rscript 06_figures.R pilot    # figures + output/summary_pilot.txt
+Rscript 07_stability_spec.R full ... 10_stability_figures.R full   # stability; see STABILITY_PLAN.md "As built"
+```
+
+`R/fit_task.R` holds the method fitters.
+
+## Locked decisions
+
+| Area | Decision |
+|---|---|
+| Release | 5.1 now; port to 6.x later |
+| Outcome | CBCL total problems, parent report. Raw totals are the main scale; T-scores and log(1+raw) are forks |
+| Waves | BL, Y1, Y2, Y3 (Y4 is only partly released in 5.1, n=4,677) |
+| Inclusion | ≥3 of 4 waves (main) vs all 4 waves |
+| Missing data | Main: all methods cluster the same single seeded pmm imputation. Fork: each method's own handling (lcmm uses all observed rows by likelihood; for the other methods that equals complete cases, i.e. the all-4 sample) |
+| Families | Main: one child per family, seeded random pick. Fork: full sample, with family-clustered SEs in the poverty model |
+| Time metric | Wave (0-3) vs age − 9 (years). This only changes GBTM and GMM; the other methods treat waves as positions |
+| Methods (7) | k-means, PAM (CLARA; exact PAM when n ≤ 2,000), Ward, Gaussian mixture on the 4 wave scores (mclust VVV), kml, GBTM, GMM |
+| GBTM / GMM | hlme via latrend, class-specific quadratic in time. GMM adds a random intercept and slope |
+| k | 2-6 in the main analysis. The k-max 5 vs 6 fork is reported as a possible finding in itself. The supplement runs k 7-8 for the five cheap methods |
+| Selection criteria | BIC (likelihood-based methods only) and silhouette. Every k still goes into the spec curve |
+| Class assignment | Modal (hard) class for every method |
+| Class order | Relabelled 1..K by mean raw CBCL across BL-Y3; class K is the "highest-symptom class" |
+| Poverty exposure | log baseline household income at bin midpoints. The bottom bin (<$5k) is set to $2,500 and the top bin ($200k+) to $250,000 |
+| Poverty model | Multinomial logit in every universe, with the lowest class as reference. Covariates: baseline age, sex, site. The spec curve shows the highest-vs-lowest RRR per halving of income (−log2 income); every contrast is stored |
+| Class-size floor | Solutions with any class under 5% are flagged and kept |
+| Random starts | 20 per universe (k-means nstart, CLARA samples, kml redrawings, lcmm gridsearch reps) |
+| Compute | Local (18 cores); pilot first |
+
+## Exclusions (see output/logs/sample_flow.txt)
+
+- 1,017 children with baseline income refused or answered "don't know" (777/999), or missing, are excluded, not imputed.
+- 2 children with sex not coded 1 or 2 are excluded.
+- 761 children with fewer than 3 of the 4 CBCL waves are excluded.
+- Analysis sample: 10,088 children (9,003 with all 4 waves). 8,331 with one child per family.
+- One child has no `interview_age` at any wave. Their ages are filled with the sample median at each wave (after imputation and flags, so nothing else changes). This was found when the full run's age-metric GBTM/GMM tasks failed; it does not affect the pilot.
+
+## Flags: come back to these
+
+- **No race/ethnicity adjustment** in the poverty models. This was deliberate (the paper is about the cluster multiverse) but may be added later.
+- **Random starts (20)** to revisit. Start-to-start stability is not yet recorded per universe; a stability figure needs that.
+- **Single imputation.** Full multiple imputation (with class labels aligned across imputations) is deferred.
+- **Modal assignment** ignores classification uncertainty in the likelihood-based methods (GBTM, GMM, Gaussian mixture). A three-step correction could be added later as a fork.
+- **Gaussian likelihood for raw counts.** GBTM/GMM use a Gaussian hlme on every scale. The censored-normal / link-function version for raw counts is not implemented; the log scale fork partly covers skew.
+- **Ward and PAM-at-small-n are deterministic.** Their 20 "starts" don't apply. The Gaussian mixture is deterministic only at n ≤ 2,000 (the pilot). Above that, mclust initialises on a random subset of 2,000 children (`mclust.options("subset")`), so full-sample fits depend on the RNG. `fit_llpa` set no seed in the main run, so those fits are not exactly reproducible: refits with a seed agree with them at ARI .28-.84 (checked 2026-10-24 on the anchor configs). `fit_llpa` now seeds; the stability analysis gives the Gaussian mixture 50 seed replicates.
+- **Silhouette** is computed on the imputed 4-wave score matrix (on the universe's scale) for every method, including native-missing lcmm fits, so all methods are scored in the same space. A seeded subsample of 3,000 is used when n > 3,000.
+- **Site in small pilot classes.** With 21 site dummies and small classes, some multinomial fits separate. The pilot RRRs for tiny classes are unstable; class-gradient points with SE > 5 are dropped in the S1 figure.
+
+## Pilot results (2026-10-23, n ≈ 2,000; see output/summary_pilot.txt)
+
+- 780 universes (660 main with k = 2-6, plus 120 supplement). 13 fits failed (all Gaussian mixture, unconstrained covariance, mostly at k ≥ 7). 74 had an empty class (nearly all GMM). 654 main universes have a poverty estimate.
+- Poverty RRR (highest vs lowest class, per halving of income): median 1.13 (IQR 1.06-1.21). The CI is above 1 in 54% of universes and below 1 in 4%. k-max 5 vs 6 makes no difference.
+- **Scale drives the result** (39% unique variance in log RRR; method 2.5%, k 3%). Raw scores split off a small severe class (median 8%, mean CBCL 53): RRR 1.22, with the CI above 1 in 95% of universes. log(1+raw) makes the "highest" class a large moderate group (32%, mean 35): RRR 1.05, CI above 1 in 15%.
+- Agreement between methods: kml-k-means ARI .92, GBTM-kml .72. The Gaussian mixture and GMM agree with everything else at only .19-.41.
+- k selection: silhouette picks k = 2 almost everywhere. GBTM's BIC always picks the largest k allowed, so the k-max fork fully determines GBTM's selected k.
+- The class gradient (S1) rises with class mean CBCL for every method except GMM, which is noisy.
+
+## Full-sample results (2026-10-23; see output/summary_full.txt, output/figures/full)
+
+The run took about 8.5 hours of wall time on 12 cores in two passes: the age-metric tasks were refit after the missing-age fix, and about 2 hours were lost to lid-closed sleep. Full-sample GMM took about 75-265 min per task.
+
+- 780 universes. The only fit failures are 16 Gaussian-mixture fits that couldn't fit the unconstrained (VVV) model. 75 universes have an empty class (nearly all GMM). 653 main universes have a poverty estimate.
+- Poverty RRR (highest vs lowest class, per halving of income): median 1.16 (IQR 1.07-1.21). The CI is above 1 in 85% of universes and below 1 in 4% (23). k-max 5 vs 6: CI above 1 in 83% vs 85%. The magnitudes match the pilot; the pilot was underpowered.
+- **Scale is the dominant fork** (49% unique variance in log RRR; method 8%, k 6%, time/family/sample about 0):
+  - raw: the highest class is median 8% of children with mean CBCL 53. RRR 1.25, CI above 1 in 100%.
+  - T-score: 13%, mean 47. RRR 1.16, CI above 1 in 95%.
+  - log(1+raw): 32%, mean 35. RRR 1.05, CI above 1 in 59%.
+- **All 23 reversals (CI below 1) are mixture models on log or T scales**: 19 GMM-log, 2 Gaussian-mixture-log and 2 T-scale universes. In them the "highest" class is a majority group (median 56%, mean CBCL 25), so the comparison is no longer severe vs low.
+- By method, the share of universes with the CI above 1: PAM 98%, k-means/kml 95%, GBTM 93%, Ward 87%, Gaussian mixture 81%, GMM 65%.
+- Agreement: k-means-kml ARI .91, kml-GBTM .74. The Gaussian mixture and GMM agree with everything at .18-.34.
+- k selection: silhouette picks k = 2 for every method except some GMM/Gaussian-mixture configs. GBTM's BIC picks the k-max in 69 of 72 configs, so the cap decides it.
+- Class gradient (S1): log RRR rises roughly linearly with class mean CBCL for every method. The GMM panel is noisier, and its loess curve is pulled up by one extreme class (mean CBCL ~125).
+
+## Stability results (2026-10-25; see output/summary_stability_full.txt, output/figures/stability)
+
+The anchors are one child per family, ≥3 waves, imputed (n = 8,331), on the raw and log(1+raw) scales, with k = 2-6. There were 2,860 replicates (15,413 solutions); design and changes are in STABILITY_PLAN.md. The run took about 36 hours on 8 cores. Fit failures were Gaussian-mixture VVV fits with no solution (272, mostly at k 5-6 and in the noisy data) and 3 raw-null GMM datasets (all k). 3 of 2,800 site-split prediction directions failed (degenerate raw GBTM/GMM training fits at k 5-6).
+
+Values below are means over k = 2-6, given as log / raw anchor.
+- **Seeds:** k-means, kml and GBTM come back identically (ARI ≈ 1.00). PAM (CLARA): .77-.98. The Gaussian mixture falls off with k (raw .97 → .62; log .95 → .39).
+- **80% subsamples:** kml .95/.97, k-means .95/.96, GBTM .91/.96, PAM .88/.87, GMM .64/.88, Gaussian mixture .63/.76, Ward .43/.53.
+- **Site split-half** (ARI between the test half's own fit and the training half's predicted classes): k-means .83/.88, kml .82/.88, GBTM .76/.88, PAM .78/.79, GMM .39/.80, Gaussian mixture .55/.68, Ward .45/.58.
+- **Measurement noise** is the hardest test, especially on the log scale. At r = .80, ARI is .17-.41 on log and .27-.80 on raw. Even at r = .94 it is .25-.60 on log.
+- **Settings** matter more than resampling for Ward and the Gaussian mixture. Average or complete linkage vs Ward: ARI .00-.23 (average linkage on raw splits off outliers). Mixture EEE vs VVV: .08-.19; VVI vs VVV: .35-.67. PAM Manhattan vs Euclidean: .74-.78. GBTM linear vs quadratic: .95-.99. GMM variants: .35-.67.
+- **Child level** (pooled over seeds, subsamples, site halves and noise): on the raw scale at k = 2, 19% of children are reliably in the highest class with k-means (≥ .90 of replicates) and only 2% are on the boundary. 94% of the main run's highest-class children are reliably high. On the log scale the highest class is about half the sample (k-means 53% reliably high). Ward and GMM have much larger boundary groups (log k = 2: 48% and 32%).
+- **Start recording (GBTM/GMM):** GBTM reaches the same best log-likelihood from all 5 converged starts at every k except raw k = 6 (1 of 5), and it reproduces the main-run solution exactly. **GMM does not.** The main run's GMM fits were local optima at log k = 2, 3 and 6 and raw k = 6 (the recorded fit's BIC is lower by 54, 197, 472 and 3,588). At log k = 5 the main run beat all 5 recorded starts by 399. At log k = 2 the better optimum gives RRR 0.93 (CI below 1) where the main run had 1.01. So the GMM-log reversals in the spec curve depend on which local optimum gridsearch reaches.
+- **Null benchmark:** the methods do not reject the null.
+  - Silhouette picks k = 2 in the null just as in the real data.
+  - On the raw scale the null gives *higher* silhouettes than the real data for k-means, kml, Ward, GBTM and GMM. A skewed, floored count with no subgroups splits off a small "severe" class by itself (null highest class: median 3% of children, mean CBCL 116; real: 8%, mean 58).
+  - On the log scale real silhouettes are only slightly above the null's.
+  - The relative entropy of GBTM on raw is higher in the real data (~.9) than in the null (~.35).
+- **Poverty:**
+  - Raw anchor: the CI is above 1 in 100% of replicates under every perturbation (median RRR 1.30-1.33).
+  - Log anchor: the CI is above 1 in 47% of site halves (half the sample), 65% of subsamples, 85% of seeds and 92-95% under noise (median 1.06-1.10).
+  - Null: the RRR is centred on 1.00 and the CI excludes 1 in 3.6% (raw) and 4.8% (log) of null solutions, close to the nominal 5%. So the poverty gradient is not an artefact of the clustering.
+
+## GMM optima experiment (2026-11-03; see output/summary_gmm_optima.txt, R/gmm_optima.R)
+
+50 random starts on each GMM anchor (raw and log, n = 8,331) × k = 2-6, each run to the end, with no 10-iteration screen deciding which to converge. The run was paused about 4.5 days by sleep, so raw k = 6 times are inflated.
+
+| k | Log: starts at best, converged | Raw: starts at best, converged | Minutes per start |
+|---|---|---|---|
+| 2 | 33, 50 | 50, 50 | under 1 |
+| 3 | 20, 50 | 3, 50 | about 1 |
+| 4 | 17, 50 | 5, 49 | about 3 |
+| 5 | 1, 35 | 5, 41 | about 15 |
+| 6 | 1, 3 | 1, 8 | about 50 |
+
+- **Gridsearch does not improve with more starts.** The 10-iteration log-likelihood barely predicts the final one (rank correlation -.27 to .23). At log k = 3, gridsearch's chance of reaching the best falls from .40 with 1 start to .17 with 20. The main run's 20 starts reach the best at log k = 2 and 4 only some of the time, and rarely or never at log k = 3 and 5-6 or raw k = 3-6.
+- **Converging every start does work where the best can be identified.** For a 95% chance: about 3 starts at log k = 2, 6 at log k = 3, 8 at log k = 4, 49 at raw k = 3 (CI on the last is wide, up to about 240).
+- **k = 5-6 and raw k = 4-5 are not reliably estimated.** Each best at k = 5-6 (except raw k = 5) was hit once. Most k = 6 starts hit the 500-iteration cap. Log k = 6's best fits worse than log k = 5's, which cannot be the true maximum. At raw k = 4 and 5 the best converged solution is the 3-class one, and one non-converged run at each reached a log-likelihood about 676 higher, so better solutions exist.
+- **The better optima use small classes.** Raw k = 3: 3.1%, 14%, 83%. Raw k = 6 and log k = 6 include classes of 1.2-1.8%.
+- **Poverty RRR moves.** Raw k = 3: 1.19 (main) to 1.32 (best). Log k = 2: 1.01 to 0.93 (CI below 1). Log k = 3: 0.92 (CI below 1) to 0.99. On log the "highest" class at these optima is 74-81% of children with mean CBCL 20-22, so the reading that log reversals compare a majority group with a low group holds, but which universes reverse depends on the optimum reached.
+- **Main-run GMM (180 universes):** 72 have an empty class and 52 did not converge. The stability analysis used the same gridsearch, so GMM's replicate ARIs mix data sensitivity with optimiser luck. GBTM is not affected: it reproduced the main-run solutions.
+
+## GMM refit (2026-11-05; see output/summary_full_refit.txt, output/figures/full_refit, R/gmm_refit.R, R/gmm_refit_merge.R)
+
+All 36 GMM tasks at k = 2-4 were refitted with 50 random starts each, every start run to the end (5,400 starts, no errors, 380 CPU-hours, 50 hours on 8 cores). The best converged solution replaces the main-run fit in the `full_refit` mode. k = 5-6 keep the main-run fit and are flagged as not reliably estimated. `results_full.rds` and `output/universes/full/` are unchanged, and all 600 non-GMM universes have identical estimates in the two modes. To rebuild: `R/gmm_refit_merge.R full_refit`, then `04_poverty.R`, `05_agreement.R` and `06_figures.R` with mode `full_refit`.
+
+**Primary run (decided 2026-11-07): `full_refit`.** Report the main run as sensitivity. Write-ups should cite `output/summary_full_refit.txt` and `output/figures/full_refit/`; the Full-sample results section above describes the main run.
+
+**The multiverse-level result does not change.**
+
+| Main universes (k 2-6) | Main run | Refit |
+|---|---|---|
+| Median RRR (IQR) | 1.16 (1.07-1.21) | 1.16 (1.07-1.22) |
+| CI above 1, of 653 | 553 (85%) | 553 (85%) |
+| CI below 1 | 23 | 22 |
+| Scale, unique share of variance in log RRR | 49% | 51% |
+| Method, unique share | 8% | 6% |
+| Empty class | 75 | 58 |
+| Smallest class under 5% | 203 | 219 |
+
+Keeping only replicated GMM solutions with no empty class gives the same answer: median 1.16, CI above 1 in 87%, below 1 in 4% (554 universes). GMM as a whole: median RRR 1.16 to 1.17, CI above 1 in 65% both times.
+
+**Individual GMM universes do change.** The refit was never worse by BIC, and it was better by more than 1 point in 6 of 36 universes at k = 2, 31 at k = 3 and 33 at k = 4. Median BIC gains at k = 3-4: raw 1,217 and 1,428, log 124 and 355, T-score 50 and 113. Median ARI with the main-run classes: 1.00 at k = 2, .48 at k = 3, .56 at k = 4. CI category changed in 18 of 108 universes.
+
+| Median RRR, main to refit; universes with CI below 1, main to refit (of 12) | k = 2 | k = 3 | k = 4 |
+|---|---|---|---|
+| Raw | 1.19 to 1.19; 0 to 0 | 1.19 to 1.30; 0 to 0 | 1.18 to 1.24; 0 to 0 |
+| T-score | 1.22 to 1.22; 0 to 0 | 1.17 to 1.21; 0 to 0 | 1.17 to 1.19; 0 to 0 |
+| log(1+raw) | 0.97 to 0.93; 6 to 12 | 0.93 to 0.99; 9 to 4 | 0.96 to 0.96; 4 to 2 |
+
+- **Log k = 2 now reverses in every configuration.** The 6 that were not below 1 in the main run were all local optima (BIC gains 54-136). One, `gmm_log_wave_full_all4_k2`, went from CI above 1 to CI below 1 (1.05 to 0.92), the only universe to cross from one side to the other.
+- **The better optima use smaller classes.** Universes with a class under 5%: k = 3 from 16 to 27 of 36, k = 4 from 30 to 35. Empty classes at k = 3 fall from 11 to 0, and at k = 4 from 17 to 11. Non-converged fits at k = 4 fall from 6 to 0.
+- **BIC among k = 2-4, excluding empty-class solutions:** log and T-score pick k = 4 in all 12 configurations; raw picks k = 3 in 11 and k = 4 in 1.
+
+**How well determined the solutions are.** `gmm_flag` marks each GMM universe. "replicated" means at least 2 starts reached the best converged log-likelihood within 0.5, and no non-converged start in the refit beat it.
+
+| k | Replicated | Best found once | Median starts at best |
+|---|---|---|---|
+| 2 | 36 | 0 | 50 |
+| 3 | 30 | 6 (5 raw by wave) | 4 |
+| 4 | 19 | 17 (raw 8, T-score 6, log 3) | 2 |
+
+Experiment anchors: log k = 2-4 and raw k = 2-3 reach the same best log-likelihoods in fresh starts.
+
+- **Raw k = 4 remains not reliably estimated.** 11 of 12 best solutions have an empty class. At the anchor the refit's best (-128764, found once) beats the experiment's best converged (-128958), but one non-converged experiment run reached -128282. So a better solution exists that the flag cannot see, because the flag only compares starts within the refit. Treat every raw k = 4 universe as flagged, whatever `gmm_flag` says.
+- **T-score by wave at k = 4 mostly does not converge.** Converged starts of 50 at k = 4:
+
+| | By age (of 300) | By wave (of 300) |
+|---|---|---|
+| Raw | 294 | 287 |
+| T-score | 242 | 27 |
+| Log | 300 | 300 |
+
+  Failure takes the combination: neither T-scores nor wave alone does it. Most T-score-by-wave starts hit the 500-iteration cap; the cause was not investigated. Each such universe still has at least 2 converged starts, and 5 of the 6 are "best found once".
+
+**Not updated:** the stability analysis still uses gridsearch and main-run GMM base solutions, so its GMM numbers mix data sensitivity with optimiser luck. The Full-sample results section above describes the main run.
+
+## Package notes
+
+- kml 2.5.0, longitudinalData 2.4.7 and clv 0.3-2.5 were archived from CRAN on 2026-01-16. `00_install.R` installs them from the archive with two minimal patches:
+  - clv: deletes an unused `#include <R_ext/PrtUtil.h>`, which R 4.6 removed.
+  - longitudinalData: drops the misc3d dependency (3-D plots only; misc3d needs XQuartz).
+- rgl is built from source with `--disable-opengl` because this Mac has no XQuartz.
+- latrend's GBTM wrapper ignores gridsearch initialisation. GBTM is therefore fitted through `lcMethodLcmmGMM(random = ~ -1)`, the same model, so it gets the same 20-start gridsearch.
+- Exact versions: `output/logs/package_versions.txt`; session info: `output/logs/sessionInfo_<mode>.txt`.
