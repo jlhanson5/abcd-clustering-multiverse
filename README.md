@@ -236,6 +236,17 @@ Figures (`13_cbma_summary.R`): cbma1 weights, cbma2 class trajectories, cbma3 un
 - **Convergence:** the objective still changed by about 1 part in 10,000 over the last 500 steps. A 10,000-step rerun of log/equal (2026-11-08, 162 min) lowered the objective by a further 0.03% and barely moved the labels: ARI .96 with the 5,000-step fit, the same 4 clusters (sizes 9/27/38/27 vs 7/28/38/27; 136 children moved from class 2 into the near-zero class 1), the same mean uncertainty (.263) and poverty RRR 1.03 (0.98-1.09) vs 1.02 (0.96-1.08). 5,000 steps is enough for these results. Files: `output/archive/smoke/cbma_smoke/log_equal.rds`, `output/logs/cbma_conv_check.log`.
 - **Caveats:** only the port's Calinski-Harabasz path is compared with the original package. S_Dbw (and its minimise direction) is unit-tested only, and returns non-finite values on raw at small n (it is finite at n = 8,331). Equal, averaged and k-balanced weights are not in the original package; they skip the index and use the same consensus and factorisation code, which is parity-tested.
 
+## Single methods vs consensus (2026-11-09; see output/summary_extra_figures.txt, output/figures/extra)
+
+`Rscript 14_extra_figures.R` (after 13). It puts the 32 input solutions per scale (full_refit, anchor configuration, k 2-6) next to the 16 consensus fits. The poverty model is refit on every consensus class and reproduces the stored highest-vs-lowest RRRs exactly.
+- **x1** poverty RRR of every input and consensus fit. Raw inputs spread 1.15-1.51 (median 1.34) and rise with k, because the highest class gets smaller and more severe. The consensus sits at 1.22-1.33, below most k 4-6 inputs. T-score inputs: 1.05-1.21 (median 1.14), consensus 1.18-1.20. On log the inputs are 0.93-1.19 (median 1.06) and the consensus spans almost the same range (1.02-1.26).
+- **x2** size and mean CBCL of every class. The highest class runs from 2% (mean CBCL ~80) to 45% (~30) on raw, and up to 80% (~20) on log.
+- **x3** crosswalk of the equal-weight consensus against each method's k = 3 solution.
+- **x4** child-level uncertainty against mean CBCL: uncertainty peaks at the class borders (around CBCL 15-20 and 30-35 on raw).
+- **x5** RRR of every class vs the lowest, against class mean CBCL. **U-shape:** in the log equal-weight and k-balanced fits the reference class is a near-zero group (7-12%), and the next two classes have RRR *below* 1 against it (0.88-0.90). The near-zero children come from poorer families than the mildly symptomatic ones, so the highest-vs-lowest contrast on these fits understates the gradient. See "Still open" in HANDOFF (fixed reference class).
+- **x6** share of input solutions that put each child in their highest class. With equal weights, 6% (raw), 14% (T), 27% (log) and 14% (pooled) of children are in the highest class in at least half of the inputs; only 1.4% (raw) are in it in every input.
+- **x7** ARI between all 16 consensus fits. Agreement is high within a scale (except log S_Dbw) and low across scales (raw vs log .16-.38). The pooled all-scales fit is closest to log CH (.83) and T-score (.59-.74).
+
 ## Package notes
 
 - kml 2.5.0, longitudinalData 2.4.7 and clv 0.3-2.5 were archived from CRAN on 2026-01-16. `00_install.R` installs them from the archive with two minimal patches:
