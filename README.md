@@ -216,6 +216,8 @@ Three changes from the October run, which is kept in `output/archive/stability_a
 
 `12_cbma.R` combines the anchor configuration's solutions (one child per family, ≥3 waves, imputed, n = 8,331) across methods and k with the native R port of clusterBMA (Forbes et al., 2023; `../clusterBMA_port`). Hard (modal) inputs, K_BMA = 6 (empty clusters drop out), 5,000 Adam steps, seed 1, vecLib BLAS. About 85 minutes per fit.
 
+Figures (`13_cbma_summary.R`): cbma1 weights, cbma2 class trajectories, cbma3 uncertainty, cbma4 input-consensus ARI, cbma5 poverty RRR per fit, cbma6 ARI between weightings, cbma7 uncertainty by class. cbma7 shows that the small classes behind the log scale's outlying RRRs are the least certain: the S_Dbw 4% high class (mean uncertainty .50) and the equal-weight 7% near-zero class (.46), against about .20-.30 for the other log classes. On raw the large lowest class is the most certain (.11-.16) and the two higher classes sit at .26-.30.
+
 - **Inputs:** k = 2-6 for all 7 methods, less errors, degenerate fits, GMM k = 5-6 and raw GMM k = 4: 32 per scale. The leave-outs are uneven by k (7 inputs at k = 2-3, 5-6 at k = 5-6) and all model-based (GMM; Gaussian mixture at k = 6 on T-score and log).
 - **Weightings:** Calinski-Harabasz (the paper's default), S_Dbw, equal, averaged (mean of the three; the consensus is linear in the weights, so this equals averaging the three consensus matrices) and k-balanced (each k 1/5 of the weight, split equally within k; added 2026-11-08 because of the uneven inputs). Plus one pooled run: all 96 inputs from the three scales, equal weights.
 

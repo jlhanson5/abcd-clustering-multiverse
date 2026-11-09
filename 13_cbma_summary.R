@@ -7,6 +7,9 @@
 #   cbma2_trajectories   consensus classes: mean raw CBCL by wave, with class sizes
 #   cbma3_uncertainty    per-child allocation uncertainty, per scale x weighting
 #   cbma4_agreement      ARI of each method's inputs with the consensus
+#   cbma5_poverty        poverty RRR (95% CI) for every consensus fit
+#   cbma6_weighting_agreement  ARI between weightings on the same scale
+#   cbma7_uncertainty_by_class  mean allocation uncertainty per consensus class
 # Runs: scale raw / t / log / all x weighting ch / sdbw / equal / avg / kbal (see 12_cbma.R).
 # =============================================================================
 
@@ -127,4 +130,59 @@ cc <- bind_rows(lapply(names(S_LAB), function(s) {
          ari = round(apply(pr, 2, \(p) adjustedRandIndex(rs[[p[1]]]$labels, rs[[p[2]]]$labels)), 2))
 }))
 if (nrow(cc)) { say("\nARI between consensus fits on the same scale (different weightings):"); say(pt(cc)) }
+
+# ---- Poverty RRR per consensus fit --------------------------------------------------------------
+pv <- ov |> filter(!is.na(rrr)) |>
+  mutate(lo = as.numeric(sub("-.*", "", ci)), hi = as.numeric(sub(".*-", "", ci)),
+         lab = sprintf("%.2f   highest %s%%, lowest %s%%", rrr, round(top_pct), sub("/.*", "", sizes)))
+p5 <- ggplot(pv, aes(rrr, weighting)) +
+  geom_vline(xintercept = 1, color = INK2, linewidth = 0.4, linetype = "dashed") +
+  geom_errorbar(aes(xmin = lo, xmax = hi), width = 0, orientation = "y", color = "#5b9be6", linewidth = 0.7) +
+  geom_point(size = 2.4, color = "#0d3266") +
+  geom_text(aes(x = max(hi) * 1.02, label = lab), hjust = 0, size = 2.5, color = INK2) +
+  facet_grid(scale ~ ., scales = "free_y", space = "free_y") +
+  scale_x_log10(expand = expansion(mult = c(0.05, 0.6))) +
+  scale_y_discrete(limits = rev) +
+  labs(x = "Poverty RRR per halving of income, highest vs lowest consensus class (95% CI, log scale)", y = NULL,
+       title = "Poverty gradient in every consensus fit",
+       subtitle = "Text: RRR, then the share of children in the highest and lowest classes. A small lowest class is a near-zero group.") +
+  theme(strip.text.y = element_text(angle = 0))
+save(p5, "cbma5_poverty", 9, 6.5)
+
+# ---- Agreement between weightings ----------------------------------------------------------------
+if (nrow(cc)) {
+  cm <- bind_rows(cc, rename(cc, a = b, b = a),
+                  distinct(bind_rows(select(cc, scale, a), select(cc, scale, a = b))) |> mutate(b = a, ari = 1)) |>
+    filter(scale != S_LAB[["all"]]) |>
+    mutate(scale = factor(scale, S_LAB), a = factor(a, W_LAB), b = factor(b, W_LAB))
+  p6 <- ggplot(cm, aes(a, b, fill = ari)) +
+    geom_tile(color = "white", linewidth = 0.8) +
+    geom_text(aes(label = sprintf("%.2f", ari), color = ari > .75), size = 2.6) +
+    scale_color_manual(values = c(`TRUE` = "white", `FALSE` = INK), guide = "none") +
+    scale_fill_gradientn(colors = c("#e8f1fb", "#86b6ef", "#3987e5", "#184f95"), limits = c(min(cm$ari), 1), name = "ARI") +
+    facet_wrap(~ scale, nrow = 1) +
+    scale_y_discrete(limits = rev) +
+    labs(x = NULL, y = NULL, title = "Do the weightings give the same consensus?",
+         subtitle = "ARI between consensus classes on the same scale. The pooled all-scales runs are left out (two fits).") +
+    theme(panel.grid = element_blank(), axis.text.x = element_text(angle = 35, hjust = 1))
+  save(p6, "cbma6_weighting_agreement", 11, 4)
+}
+
+# ---- Uncertainty by consensus class -----------------------------------------------------------------
+uc <- bind_rows(lapply(runs, \(r) bind_cols(lab(r)[rep(1, r$n), ], tibble(class = factor(r$labels), u = r$uncertainty)))) |>
+  group_by(scale, weighting, class) |>
+  summarise(mean_u = mean(u), over20 = mean(u > .2), n = n(), .groups = "drop") |>
+  group_by(scale, weighting) |> mutate(share = n / sum(n)) |> ungroup()
+say("\nUncertainty by consensus class (1 = lowest mean CBCL):")
+say(pt(uc |> mutate(across(c(mean_u, over20, share), \(x) round(x, 3)))))
+p7 <- ggplot(uc, aes(class, mean_u, fill = class)) +
+  geom_col(width = 0.7) +
+  geom_text(aes(label = sprintf("%.0f%%", 100 * share)), vjust = -0.4, size = 2.3, color = INK2) +
+  facet_grid(scale ~ weighting) +
+  scale_fill_manual(values = ORD, guide = "none") +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.2))) +
+  labs(x = "Consensus class (1 = lowest mean CBCL)", y = "Mean allocation uncertainty",
+       title = "Which consensus classes are the methods unsure about?",
+       subtitle = "Mean of 1 - probability of the assigned class, per class. Labels: class size.")
+save(p7, "cbma7_uncertainty_by_class", 10, 7)
 say("\nFigures written to ", figd)
