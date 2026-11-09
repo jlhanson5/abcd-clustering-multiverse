@@ -63,8 +63,8 @@ Notes:
 - **Noise.** The measurement error (SEM) is SD_wave × √(1 − r), on the raw scale.
   Jittered raw scores are rounded and floored at 0; the log anchor takes
   log1p of the jittered raw. The two levels are:
-  1. the published test-retest reliability for CBCL Total Problems (about .94 in
-     the ASEBA school-age manual; **to verify before running**);
+  1. the published test-retest reliability for CBCL Total Problems. The October run
+     used .94; **.90 since 2026-11-07** (see "Open items");
   2. r = .80.
 
 ## Settings variations (stability only; the main spec curve is unchanged)
@@ -128,7 +128,7 @@ the null false-positive distribution.
 
 | Fig | Content |
 |---|---|
-| Stab-1 | Stability heatmap: method × k, mean ARI. Facets for perturbation (seeds, subsample, site split, noise r = .94 and .80) and anchor |
+| Stab-1 | Stability heatmap: method × k, mean ARI. Facets for perturbation (seeds, subsample, site split, noise r = .90 and .80) and anchor |
 | Stab-2 | Child-level consistency: distribution of P(highest class) per child, method × k, raw vs log; % reliably high / boundary |
 | Stab-3 | Null benchmark: real vs null silhouette, entropy and BIC gain by k and method; selected k in real vs null |
 | Stab-4 | Poverty RRR: spread across subsamples and site splits next to the main CI, with the null distribution around 1 |
@@ -200,21 +200,31 @@ Changes from the plan above:
 - **Paired design.** Subsamples, site halves, noise draws and null datasets are seeded by
   perturbation × replicate only, so all methods and both anchors see the same data.
   Settings-variant subsamples are subsamples 1-20.
-- **SEM** from the anchor's wave SDs (17.3-17.9): 4.3 raw points at r = .94, 7.9 at r = .80.
+- **SEM** from the anchor's wave SDs (17.3-17.9): 4.3 raw points at r = .94 (October run),
+  5.5-5.7 at r = .90 (current), 7.9 at r = .80.
+
+## Rerun (2026-11-07 to 11-08)
+
+- Noise level 1 is r = .90 (`NOISE_R` in R/perturb.R; ptype `noise90`). Its replicates reuse
+  the noise94 random draws (`P_CODE` 3), scaled to the new SEM.
+- GMM replicates at k = 2-4 refitted with 10 converged starts (`R/gmm_stab_refit.R`, run after
+  08 and before 09); k = 5-6 keep gridsearch. Originals in `output/stability/reps_gridsearch_gmm/`.
+- Base solutions from `results_full_refit.rds` (07_stability_spec.R).
+- October outputs: `output/archive/stability_archive_2026-10-25/`. Results: README "Stability rerun".
 - **Null model** (log scale, age − 9): intercept 2.584, slope −0.058, quadratic 0.003;
   SD of random intercept 0.908 and slope 0.169; residual SD 0.524.
 
 ## Open items before building (status 2026-10-24)
 
-- **Reliability .94: not yet verified.** Public summaries of the 2001 manual give test-retest
-  r of .80-.94 across scales (mean .88) and an ICC of .95 for the problem scale (n = 73, one
-  week), but none ties .94 to Total Problems. Check the manual's reliability table
-  (pp. 101-102 are cited for the samples). Changing it means editing `NOISE_R` in
-  R/perturb.R and deleting the noise94 replicates.
+- **Reliability: resolved 2026-11-07, r = .90.** Public summaries of the 2001 manual give
+  test-retest r of .80-.94 across scales (mean .88), and none ties .94 to Total Problems.
+  Jamie judged .94 too high. Achenbach & Rescorla (2000), Table 8-1, gives r = .90 for
+  preschool Total Problems; Naar-King, Ellis & Frey (2004, p. 70) give .80-.94 across scales.
+  `NOISE_R` in R/perturb.R is now c(noise90 = .90, noise80 = .80).
 - **lcmm prediction: done.** latrend's `predictPostprob()` silently returns uniform
   probabilities for lcModelLcmmGMM; `predict_lcmm()` in R/predict_class.R calls
   `lcmm::predictClass` on the underlying hlme model instead (checked in
-  R/check_predict_lcmm.R on simulated data).
+  archive/code/check_predict_lcmm.R on simulated data).
 - **Ward:** nearest centroid, noted in R/predict_class.R.
 
 Original list:

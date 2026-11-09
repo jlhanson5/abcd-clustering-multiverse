@@ -7,6 +7,7 @@
 #   cbma2_trajectories   consensus classes: mean raw CBCL by wave, with class sizes
 #   cbma3_uncertainty    per-child allocation uncertainty, per scale x weighting
 #   cbma4_agreement      ARI of each method's inputs with the consensus
+# Runs: scale raw / t / log / all x weighting ch / sdbw / equal / avg / kbal (see 12_cbma.R).
 # =============================================================================
 
 source("00_setup.R")
@@ -22,9 +23,9 @@ pt <- function(x) paste(capture.output(print(x, n = 200, width = 200)), collapse
 METHODS <- c("kmeans", "pam", "ward", "llpa", "kml", "gbtm", "gmm")
 M_LAB <- c(kmeans = "k-means", pam = "PAM", ward = "Ward", llpa = "Gaussian mixture",
            kml = "kml", gbtm = "GBTM", gmm = "GMM")
-S_LAB <- c(raw = "Raw", t = "T-score", log = "log(1+raw)")
-W_LAB <- c(ch = "Calinski-Harabasz", sdbw = "S_Dbw", equal = "Equal")
-ORD <- c("#86b6ef", "#5598e7", "#3987e5", "#256abf", "#184f95", "#104281")
+S_LAB <- c(raw = "Raw", t = "T-score", log = "log(1+raw)", all = "All scales")
+W_LAB <- c(ch = "Calinski-Harabasz", sdbw = "S_Dbw", equal = "Equal", avg = "Averaged", kbal = "k-balanced")
+ORD <- c("#a6c8f0", "#5b9be6", "#2563b8", "#0d3266", "#08203f", "#04101f")  # light to dark; wide steps so 4 classes read apart
 INK <- "#0b0b0b"; INK2 <- "#52514e"; GRID <- "#ecebe8"
 theme_set(theme_minimal(base_size = 10) +
   theme(panel.grid.minor = element_blank(), panel.grid.major = element_line(color = GRID, linewidth = 0.3),
@@ -110,7 +111,7 @@ say(pt(wt |> group_by(scale, weighting, method) |> summarise(ari = round(mean(ar
 p4 <- ggplot(wt, aes(ari, method, color = factor(k))) +
   geom_point(size = 1.6, alpha = 0.85) +
   facet_grid(scale ~ weighting) +
-  scale_color_manual(values = ORD[c(1, 2, 3, 5, 6)], name = "k") +
+  scale_color_manual(values = c("#b9d4f3", "#78acec", "#3987e5", "#1f5fae", "#0d3266"), name = "k") +
   scale_y_discrete(labels = M_LAB, limits = rev) +
   labs(x = "ARI with the consensus classes", y = NULL, title = "Which inputs does the consensus resemble?") +
   theme(legend.position = "top", legend.justification = "left")

@@ -3,7 +3,7 @@
 #   Rscript R/gmm_refit.R <n_starts> <cores> [task_regex] [ks]
 #   e.g. Rscript R/gmm_refit.R 50 8
 #        Rscript R/gmm_refit.R 2 2 gmm_log_wave_one_ge3_native 2
-# Decided 2026-11-03 after R/gmm_optima.R showed gridsearch's 10-iteration screen
+# Decided 2026-11-03 after archive/code/gmm_optima.R showed gridsearch's 10-iteration screen
 # does not find the best optimum (README "GMM optima experiment").
 #
 # Each start: 10 hlme iterations from random(minit), as lcmm::gridsearch does, then

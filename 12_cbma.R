@@ -1,9 +1,11 @@
 # =============================================================================
 # 12_cbma.R: clusterBMA consensus across methods and k, one scale and one weighting.
 #   Rscript 12_cbma.R <scale> <weighting> [n_sub] [n_iter]
-#     scale      raw | t | log
+#     scale      raw | t | log | all (all three scales pooled; weighting equal or kbal)
 #     weighting  ch (Calinski-Harabasz, the paper's default) | sdbw (S_Dbw, the
-#                paper's alternative) | equal (no index)
+#                paper's alternative) | equal (no index) | avg (mean of the ch, sdbw
+#                and equal weights; needs those three runs first) | kbal (each k
+#                gets 1/5 of the weight, split equally among that k's inputs)
 #     n_sub, n_iter  smoke tests only: a random subsample of children, fewer steps
 # Decided 2026-11-07. Uses the native R port, ../clusterBMA_port/R/cbma.R
 # (Forbes et al., 2023); no ABCD data goes into that repository.
@@ -15,6 +17,14 @@
 # hard (one-hot): only modal classes were saved. K_BMA = 6, the largest input k.
 # The index is computed on the scale's wave matrix (raw, T-score or log1p(raw)),
 # because index values do not compare across scales.
+# avg (added 2026-11-07): the consensus matrix is linear in the weights, so the mean
+# of the three runs' consensus matrices equals the consensus from their mean weights;
+# this run averages over the three weighting schemes with equal prior weight.
+# all: equal weights need no index, so the three scales' inputs can be pooled into
+# one consensus across the whole anchor multiverse.
+# kbal (added 2026-11-08): the leave-outs make k uneven (7 inputs at k = 2-3, 5-6 at
+# k = 5-6; the missing ones are the model-based methods), so equal weighting gives
+# low k more votes. kbal gives every k the same total weight, as a sensitivity check.
 #
 # Output: output/cbma/<scale>_<weighting>.rds with inputs, index values, weights,
 # allocation matrix, labels (relabelled 1..K by mean raw CBCL), uncertainty, empty
@@ -31,7 +41,9 @@ args <- commandArgs(trailingOnly = TRUE)
 scale <- args[1]; weighting <- args[2]
 n_sub <- if (length(args) >= 3) as.integer(args[3]) else NA
 n_iter <- if (length(args) >= 4) as.integer(args[4]) else 5000
-stopifnot(scale %in% c("raw", "t", "log"), weighting %in% c("ch", "sdbw", "equal"))
+stopifnot(scale %in% c("raw", "t", "log", "all"), weighting %in% c("ch", "sdbw", "equal", "avg", "kbal"),
+          scale != "all" || weighting %in% c("equal", "kbal"))
+scales <- if (scale == "all") c("raw", "t", "log") else scale
 smoke <- !is.na(n_sub)
 dest <- file.path(OUT, if (smoke) "cbma_smoke" else "cbma")
 dir.create(dest, showWarnings = FALSE, recursive = TRUE)
@@ -40,17 +52,18 @@ K_BMA <- 6
 res <- readRDS(file.path(OUT, "results_full_refit.rds"))
 wide <- readRDS(file.path(DER, "wide.rds"))
 anchor <- res$fits |>
-  filter(family == "one", config == "ge3_imp", scale == !!scale, k %in% 2:6,
+  filter(family == "one", config == "ge3_imp", scale %in% scales, k %in% 2:6,
          time == ifelse(method %in% c("gbtm", "gmm"), "age", "wave")) |>
   mutate(keep = is.na(error) & !degenerate &
            !(method == "gmm" & k >= 5) & !(method == "gmm" & scale == "raw" & k == 4))
-inputs <- filter(anchor, keep) |> arrange(match(method, c("kmeans", "pam", "ward", "llpa", "kml", "gbtm", "gmm")), k)
+inputs <- filter(anchor, keep) |>
+  arrange(match(scale, c("raw", "t", "log")), match(method, c("kmeans", "pam", "ward", "llpa", "kml", "gbtm", "gmm")), k)
 
 ids <- sort(res$assign[[inputs$universe_id[1]]]$src_subject_id)
 if (smoke) { set.seed(SEED); ids <- sort(sample(ids, n_sub)) }
 w <- wide[match(ids, wide$src_subject_id), ]
 raw <- as.matrix(w[paste0("imp_r_", WAVES)])
-X <- switch(scale, raw = raw, t = as.matrix(w[paste0("imp_t_", WAVES)]), log = log1p(raw))
+X <- switch(scale, raw = raw, t = as.matrix(w[paste0("imp_t_", WAVES)]), log = log1p(raw), all = NULL)
 A_list <- lapply(inputs$universe_id, function(u) {
   a <- res$assign[[u]]
   cls <- a$class[match(ids, a$src_subject_id)]
@@ -62,11 +75,25 @@ cat(sprintf("[%s / %s] %d inputs (%d left out), N = %d, K_BMA = %d, %d steps\n",
             length(A_list), sum(!anchor$keep), length(ids), K_BMA, n_iter))
 
 t0 <- Sys.time()
-index <- switch(weighting, ch = "Calinski_Harabasz", sdbw = "S_Dbw", equal = "Calinski_Harabasz")
-civi <- lapply(A_list, \(A) cbma_civi(X, A, index))
-values <- vapply(civi, `[[`, 0, "value")
-weights <- if (weighting == "equal") rep(1 / length(A_list), length(A_list)) else
-  cbma_weights(values, civi[[1]]$direction)
+index <- switch(weighting, ch = "Calinski_Harabasz", sdbw = "S_Dbw", "Calinski_Harabasz")
+if (scale == "all") {
+  values <- rep(NA_real_, length(A_list))           # no index across scales
+} else {
+  civi <- lapply(A_list, \(A) cbma_civi(X, A, index))
+  values <- vapply(civi, `[[`, 0, "value")
+}
+weights <- switch(weighting,
+  equal = rep(1 / length(A_list), length(A_list)),
+  kbal = { nk <- table(inputs$k); as.vector(1 / (length(nk) * nk[as.character(inputs$k)])) },
+  avg = {
+    w3 <- sapply(c("ch", "sdbw", "equal"), function(wt) {
+      r <- readRDS(file.path(dest, sprintf("%s_%s.rds", scale, wt)))
+      r$inputs$weight[match(names(A_list), r$inputs$universe_id)]
+    })
+    stopifnot(!anyNA(w3))
+    rowMeans(w3)
+  },
+  cbma_weights(values, civi[[1]]$direction))
 C <- cbma_consensus(A_list, weights)
 t_index <- as.numeric(difftime(Sys.time(), t0, units = "mins"))
 f <- cbma_ssmf(C, K_BMA, n_iter = n_iter, seed = 1L)
@@ -94,13 +121,13 @@ pov <- tryCatch({
          top_n = sum(labels == K), top_mean = mean(rowMeans(raw)[labels == K]))
 }, error = function(e) tibble(K = K, error = conditionMessage(e)))
 
-agree <- inputs |> select(universe_id, method, k) |>
+agree <- inputs |> select(universe_id, input_scale = scale, method, k) |>
   mutate(index_value = values, weight = weights,
          ari = vapply(A_list, \(A) adjustedRandIndex(max.col(A, ties.method = "first"), labels), 0))
 port_git <- tryCatch(system2("git", c("-C", PORT, "describe", "--always", "--dirty"), stdout = TRUE),
                      error = function(e) NA_character_)
 
-out <- list(scale = scale, weighting = weighting, index = if (weighting == "equal") NA else index,
+out <- list(scale = scale, weighting = weighting, index = if (weighting %in% c("equal", "avg", "kbal")) NA else index,
             n = length(ids), ids = ids, inputs = agree, left_out = filter(anchor, !keep) |> select(universe_id, method, k),
             alloc = alloc, labels = labels, uncertainty = uncert,
             sizes = tabulate(labels, K), empty_clusters = length(f$empty_clusters),
