@@ -7,7 +7,7 @@ membership in the highest-symptom class holds across that multiverse.
 Data: ABCD 5.1, read in place from
 `Dropbox/_Research_In_Progress/abcd-data-release-5.1/core`. Derived files are in
 `data_derived/` (Dropbox is approved storage for this project). The project now
-lives on the second Mac (`~/Desktop/RStudio/Pitt/`, DUC/MCW-approved; see HANDOFF.md).
+lives on the second Mac (`~/Desktop/RStudio/Pitt/`, DUC/MCW-approved; see docs/HANDOFF.md).
 Code and docs, with no data, are in the private GitHub repository
 `jlhanson5/abcd-clustering-multiverse`. `.gitignore` keeps out `data_derived/`,
 `output/` and every data or figure file type. The clusterBMA port is a separate
@@ -19,19 +19,46 @@ repository (`jlhanson5/clusterBMA-port`, simulated data only), expected at
 ```
 Rscript 00_install.R          # once
 Rscript 01_data.R             # long.rds / wide.rds + output/logs/sample_flow.txt
+Rscript 01b_race.R            # race.rds (race/ethnicity for the poverty models) + output/logs/race.txt
 Rscript 02_spec.R             # specification table
 Rscript 03_run.R pilot 12     # fit all tasks (restartable); "full" for the full sample
 Rscript 04_poverty.R pilot    # relabel classes, multinomial poverty model per universe
 Rscript 05_agreement.R pilot  # pairwise ARI / NMI
-Rscript 06_figures.R pilot    # figures + output/summary_pilot.txt
-Rscript 07_stability_spec.R full ... 10_stability_figures.R full   # stability; see STABILITY_PLAN.md "As built"
+Rscript 06_figures.R pilot    # figures + output/summaries/summary_pilot.txt
+Rscript 07_stability_spec.R full ... 10_stability_figures.R full   # stability; see docs/STABILITY_PLAN.md "As built"
 Rscript R/gmm_refit.R ...; Rscript R/gmm_refit_merge.R full_refit  # GMM refit, mode full_refit (see "GMM refit")
-Rscript 11_refit_figures.R    # extra full_refit figures (fig8-12)
+Rscript 11_refit_figures.R    # extra full_refit figures (fig8-13)
 Rscript R/gmm_stab_refit.R 8  # GMM stability replicates with converged starts, before 09
-zsh R/run_cbma.sh; zsh R/run_cbma_avg.sh   # clusterBMA consensus (12_cbma.R x 16, then 13_cbma_summary.R)
+zsh R/run_cbma.sh; zsh R/run_cbma_avg.sh   # clusterBMA consensus (12_cbma.R x 16, then 12b_cbma_poverty.R and 13_cbma_summary.R)
+Rscript 14_extra_figures.R    # single methods vs consensus (output/figures/5_single_vs_consensus)
+Rscript 15_class_gradient.R   # every class vs the lowest (output/figures/6_class_gradient)
+Rscript 16_sens_site_re.R 8   # sensitivity: site as a random effect (output/figures/7_sensitivity)
+Rscript 17_permutation.R 500 8; Rscript 17_permutation.R summary   # spec-curve permutation test (~18 h)
+Rscript 18_sens_weights.R 1   # sensitivity: ABCD population weights (needs abcd-general/abcd_p_demo.csv under ABCD_REL)
 ```
 
+`12b_cbma_poverty.R` fits the poverty models (with and without race/ethnicity) on the stored consensus classes without reclustering.
+
 `R/fit_task.R` holds the method fitters.
+
+## Folder layout (reorganised 2026-11-09)
+
+```
+*.R, R/               pipeline scripts (numbered, run from the project root) and helpers
+docs/                 HANDOFF.md, STABILITY_PLAN.md, DECISIONS_memory.md, FIGURES.md (figure index)
+archive/              retired code, incl. the pre-race-adjustment scripts
+data_derived/         wide.rds, long.rds, race.rds, weights.rds (participant-level; never leaves this Mac)
+output/results/       results_<mode>.rds, agreement_<mode>.rds, spec_*.rds, cbma_poverty.rds, gmm_refit_summary
+output/summaries/     summary_*.txt, one per figure script
+output/figures/       1_spec_curve (primary run), 2_main_run, 3_stability, 4_clusterbma,
+                      5_single_vs_consensus, 6_class_gradient, 7_sensitivity; FIGURES.md links to docs/FIGURES.md
+output/permutation/   perm_####.rds, one per permutation (17_permutation.R; perm 0 = observed)
+output/logs/          current logs; cbma/ (clusterBMA fits), archive/ (superseded)
+output/universes/, stability/, cbma/, gmm_refit/   working files from the fitting steps
+output/archive/       superseded outputs, incl. pre_race_2026-11-09/
+```
+
+Paths are set once in `00_setup.R` (`RES`, `SUMM`, `fig_dir()`). Result sections below that are dated before 2026-11-09 cite the age/sex/site model; their numbers match `output/archive/pre_race_2026-11-09/`, not the current summaries.
 
 ## Locked decisions
 
@@ -51,7 +78,7 @@ zsh R/run_cbma.sh; zsh R/run_cbma_avg.sh   # clusterBMA consensus (12_cbma.R x 1
 | Class assignment | Modal (hard) class for every method |
 | Class order | Relabelled 1..K by mean raw CBCL across BL-Y3; class K is the "highest-symptom class" |
 | Poverty exposure | log baseline household income at bin midpoints. The bottom bin (<$5k) is set to $2,500 and the top bin ($200k+) to $250,000 |
-| Poverty model | Multinomial logit in every universe, with the lowest class as reference. Covariates: baseline age, sex, site. The spec curve shows the highest-vs-lowest RRR per halving of income (−log2 income); every contrast is stored |
+| Poverty model | Multinomial logit in every universe, with the lowest class as reference. Covariates: baseline age, sex, site and race/ethnicity (primary since 2026-11-09; ABCD's 5-level `race_ethnicity`, reference White). Age, sex and site only is the sensitivity analysis. The spec curve shows the highest-vs-lowest RRR per halving of income (−log2 income); every contrast is stored |
 | Class-size floor | Solutions with any class under 5% are flagged and kept |
 | Random starts | 20 per universe (k-means nstart, CLARA samples, kml redrawings, lcmm gridsearch reps) |
 | Compute | Local (18 cores); pilot first |
@@ -66,7 +93,7 @@ zsh R/run_cbma.sh; zsh R/run_cbma_avg.sh   # clusterBMA consensus (12_cbma.R x 1
 
 ## Flags: come back to these
 
-- **No race/ethnicity adjustment** in the poverty models. This was deliberate (the paper is about the cluster multiverse) but may be added later.
+- **Race/ethnicity** was added to the poverty models on 2026-11-09 and is now the primary model (see "Race/ethnicity adjustment"). Result sections dated before then report the age, sex and site model. One child with no race code at any wave is left out of the adjusted models only.
 - **Random starts (20)** to revisit. Start-to-start stability is not yet recorded per universe; a stability figure needs that.
 - **Single imputation.** Full multiple imputation (with class labels aligned across imputations) is deferred.
 - **Modal assignment** ignores classification uncertainty in the likelihood-based methods (GBTM, GMM, Gaussian mixture). A three-step correction could be added later as a fork.
@@ -74,6 +101,27 @@ zsh R/run_cbma.sh; zsh R/run_cbma_avg.sh   # clusterBMA consensus (12_cbma.R x 1
 - **Ward and PAM-at-small-n are deterministic.** Their 20 "starts" don't apply. The Gaussian mixture is deterministic only at n ≤ 2,000 (the pilot). Above that, mclust initialises on a random subset of 2,000 children (`mclust.options("subset")`), so full-sample fits depend on the RNG. `fit_llpa` set no seed in the main run, so those fits are not exactly reproducible: refits with a seed agree with them at ARI .28-.84 (checked 2026-10-24 on the anchor configs). `fit_llpa` now seeds; the stability analysis gives the Gaussian mixture 50 seed replicates. In `full_refit` the 84 Gaussian-mixture universes were refitted with seeds (`R/llpa_reseed.R`, 2026-11-07), so the primary run is reproducible; `results_full.rds` keeps the unseeded fits.
 - **Silhouette** is computed on the imputed 4-wave score matrix (on the universe's scale) for every method, including native-missing lcmm fits, so all methods are scored in the same space. A seeded subsample of 3,000 is used when n > 3,000.
 - **Site in small pilot classes.** With 21 site dummies and small classes, some multinomial fits separate. The pilot RRRs for tiny classes are unstable; class-gradient points with SE > 5 are dropped in the S1 figure.
+
+## Race/ethnicity adjustment (2026-11-09; current results)
+
+Race/ethnicity is now in every poverty model as the primary analysis: ABCD's 5-level `race_ethnicity` (White 55%, Black 13%, Hispanic 19%, Asian 2%, Other 10%; reference White; `01b_race.R`, `output/logs/race.txt`). The age, sex and site model is the sensitivity analysis (`*_unadj` columns, `fig13_race_sensitivity`, open points in `cbma5_poverty`). No reclustering: the classes are the same, only the poverty models were refit. One child with no race code at any wave is left out of the adjusted models only. The unadjusted reruns reproduce the archived results exactly.
+
+Universes whose highest class has fewer than 10 children now have no RRR (`MIN_TOP_N`, 00_setup.R). This drops 2 GMM k = 6 universes per run (highest classes of 1-2 children), which separate once race is added (one had RRR 47,680). Fits that separate (SE zero, non-finite or above 5; `MAX_SE`) are also not estimable. This removes 6 stability solutions (highest classes of 12-22 children, RRRs of 1e37 and above, with and without race) and no spec-curve or clusterBMA estimate.
+
+- **Primary run (`full_refit`, 652 universes, k 2-6):** median RRR 1.22 (IQR 1.12-1.28), CI above 1 in 92% (601), below 1 in 2. Without race: 1.16 (1.07-1.22), 85%, 19 below 1. Main run (`full`): 1.21, 93%.
+- **Adjustment raises the estimate in almost every universe** (adjusted / unadjusted RRR median 1.05, IQR 1.03-1.07, the same on every scale). Race/ethnicity masks part of the income gradient rather than explaining it.
+- **Scale still drives the result:** raw 1.37 (CI above 1 in 100%), T-score 1.22 (99%), log(1+raw) 1.10 (78%; 59% without race). The ordering and the conclusions of the sections below are unchanged; the numbers in them are the unadjusted ones.
+- **Robustness subsets** (fig8): leaving out GMM k 5-6, unreplicated GMM, all mixture models, or small-class solutions gives medians of 1.20-1.22. By method 1.17 (Gaussian mixture) to 1.24 (GBTM); by k 1.15 (k = 2) to 1.25 (k = 6) (`summary_full_refit_extra.txt`).
+- **clusterBMA consensus** (`output/results/cbma_poverty.rds`, from `12b_cbma_poverty.R`): every fit's RRR rose by 0.04-0.10. Raw 1.26-1.38, T-score 1.23-1.25, log 1.09-1.36, pooled all-scales 1.22 (1.17-1.28). The log equal and k-balanced fits (near-zero reference class) are now 1.09 (1.02-1.17) and 1.10 (1.04-1.16), with CIs above 1.
+- **Input solutions** (32 per scale): raw median 1.41, T-score 1.21, log 1.11.
+- **Full gradient** (`15_class_gradient.R`, `output/figures/6_class_gradient`, k 3-6): on raw scores the gradient rises steadily from the lowest class in 74% of universes, and a middle class falls below the lowest (CI below 1) in 6%. On T-scores and log(1+raw) a middle class is significantly *less* poor than the lowest class in 56% and 75% of universes (any dip: 77% and 87%). The lowest class there is a near-floor group (median 21% of children with mean raw CBCL 3.9 on T-scores, 12% with 2.2 on log; on raw it is 62% with 8.0) whose families are poorer than the mildly symptomatic children. The dip grows with k (CI below 1 in 22% of universes at k = 3, 61% at k = 6). The highest-vs-lowest contrast stays primary; this is the U-shape the clusterBMA log runs showed, and it is general on the transformed scales.
+- **Stability replicates** (`summary_stability_full.txt`, `stab4_poverty`; 15,065 solutions, base variant): raw anchor median RRR 1.38, CI above 1 in 100% of 6,091 perturbed solutions (1.32, 100% without race); log anchor 1.12, 90% of 6,026 (1.07, 69%). Null datasets 0.99-1.00, CI above 1 in 1-1.5%. The weak cell is GMM on the log scale under site split-halves and subsamples (median 1.03-1.04, CI above 1 in 23-32%); every other method stays at 1.10 or above.
+
+## Sensitivity analyses (2026-11-09; output/figures/7_sensitivity)
+
+- **Site as a random effect** (`16_sens_site_re.R`, `summary_sens_site_re.txt`, `s1_site_random_effects`): highest vs lowest class as a binary logit (Begg & Gray) with a random intercept for site (glmer), same covariates. All 652 fits converged (12 singular). Median RRR 1.22 vs 1.22 primary, ratio to primary 1.00 on every scale; CI above 1 in 93% (raw 100%, T-score 99%, log 78%). Site SD 0.31 on the logit scale. Full-sample universes have no family term here, so their CIs are slightly too narrow. A first run that also gave them a random intercept for family did not work: most families have one child, 24 fits failed and raw-scale SEs were 16 times the fixed-effects SEs (kept as `*_famRE_attempt`).
+- **Population weights** (`18_sens_weights.R`, `summary_sens_weights.txt`, `s3_population_weights`): primary model weighted by ABCD's ACS raked propensity weight (`acs_raked_propensity_score` in `abcd_p_demo`, baseline; `acspsw03` up to release 4.0), rescaled to mean 1, sandwich SEs (family-clustered in the full sample, by child otherwise). Every child in the sample has a weight. Unweighted refits with the same SEs reproduce the 327 full-sample primary estimates exactly. Weighting raises the RRR slightly (weighted / unweighted median 1.02, 10th-90th percentile 1.00-1.03) and widens SEs by about 13%. Median RRR 1.24 vs 1.22; CI above 1 in 93% vs 92% (raw 100%, T-score 99%, log 79%); no universe has a CI below 1.
+- **Specification-curve permutation test** (`17_permutation.R`, Simonsohn, Simmons & Nelson 2020): 500 Freedman-Lane permutations of income residuals (on age, sex, site, race), one shuffle shared by all 652 universes, primary model refit in each. Statistics: median RRR, share of universes with CI above 1, Stouffer's Z; p = (b + 1) / (B + 1). Running; results to follow.
 
 ## Pilot results (2026-10-23, n ≈ 2,000; see output/archive/pilot/summary_pilot.txt)
 
@@ -84,7 +132,7 @@ zsh R/run_cbma.sh; zsh R/run_cbma_avg.sh   # clusterBMA consensus (12_cbma.R x 1
 - k selection: silhouette picks k = 2 almost everywhere. GBTM's BIC always picks the largest k allowed, so the k-max fork fully determines GBTM's selected k.
 - The class gradient (S1) rises with class mean CBCL for every method except GMM, which is noisy.
 
-## Full-sample results (2026-10-23; see output/summary_full.txt, output/figures/full)
+## Full-sample results (2026-10-23; see output/summaries/summary_full.txt, output/figures/2_main_run)
 
 The run took about 8.5 hours of wall time on 12 cores in two passes: the age-metric tasks were refit after the missing-age fix, and about 2 hours were lost to lid-closed sleep. Full-sample GMM took about 75-265 min per task.
 
@@ -102,7 +150,7 @@ The run took about 8.5 hours of wall time on 12 cores in two passes: the age-met
 
 ## Stability results (2026-10-25; see output/archive/stability_archive_2026-10-25/summary_stability_full.txt and figures/)
 
-The anchors are one child per family, ≥3 waves, imputed (n = 8,331), on the raw and log(1+raw) scales, with k = 2-6. There were 2,860 replicates (15,413 solutions); design and changes are in STABILITY_PLAN.md. The run took about 36 hours on 8 cores. Fit failures were Gaussian-mixture VVV fits with no solution (272, mostly at k 5-6 and in the noisy data) and 3 raw-null GMM datasets (all k). 3 of 2,800 site-split prediction directions failed (degenerate raw GBTM/GMM training fits at k 5-6).
+The anchors are one child per family, ≥3 waves, imputed (n = 8,331), on the raw and log(1+raw) scales, with k = 2-6. There were 2,860 replicates (15,413 solutions); design and changes are in docs/STABILITY_PLAN.md. The run took about 36 hours on 8 cores. Fit failures were Gaussian-mixture VVV fits with no solution (272, mostly at k 5-6 and in the noisy data) and 3 raw-null GMM datasets (all k). 3 of 2,800 site-split prediction directions failed (degenerate raw GBTM/GMM training fits at k 5-6).
 
 Values below are means over k = 2-6, given as log / raw anchor.
 - **Seeds:** k-means, kml and GBTM come back identically (ARI ≈ 1.00). PAM (CLARA): .77-.98. The Gaussian mixture falls off with k (raw .97 → .62; log .95 → .39).
@@ -141,11 +189,11 @@ Values below are means over k = 2-6, given as log / raw anchor.
 - **Poverty RRR moves.** Raw k = 3: 1.19 (main) to 1.32 (best). Log k = 2: 1.01 to 0.93 (CI below 1). Log k = 3: 0.92 (CI below 1) to 0.99. On log the "highest" class at these optima is 74-81% of children with mean CBCL 20-22, so the reading that log reversals compare a majority group with a low group holds, but which universes reverse depends on the optimum reached.
 - **Main-run GMM (180 universes):** 72 have an empty class and 52 did not converge. The stability analysis used the same gridsearch, so GMM's replicate ARIs mix data sensitivity with optimiser luck. GBTM is not affected: it reproduced the main-run solutions.
 
-## GMM refit (2026-11-05; see output/summary_full_refit.txt, output/figures/full_refit, R/gmm_refit.R, R/gmm_refit_merge.R)
+## GMM refit (2026-11-05; see output/summaries/summary_full_refit.txt, output/figures/1_spec_curve, R/gmm_refit.R, R/gmm_refit_merge.R)
 
 All 36 GMM tasks at k = 2-4 were refitted with 50 random starts each, every start run to the end (5,400 starts, no errors, 380 CPU-hours, 50 hours on 8 cores). The best converged solution replaces the main-run fit in the `full_refit` mode. k = 5-6 keep the main-run fit and are flagged as not reliably estimated. `results_full.rds` and `output/universes/full/` are unchanged, and all 600 non-GMM universes have identical estimates in the two modes. To rebuild: `R/gmm_refit_merge.R full_refit`, then `04_poverty.R`, `05_agreement.R` and `06_figures.R` with mode `full_refit`.
 
-**Primary run (decided 2026-11-07): `full_refit`.** Report the main run as sensitivity. Write-ups should cite `output/summary_full_refit.txt` and `output/figures/full_refit/`; the Full-sample results section above describes the main run.
+**Primary run (decided 2026-11-07): `full_refit`.** Report the main run as sensitivity. Write-ups should cite `output/summaries/summary_full_refit.txt` and `output/figures/1_spec_curve/`; the Full-sample results section above describes the main run.
 
 **The multiverse-level result does not change.**
 
@@ -198,7 +246,7 @@ The stability analysis was rerun against `full_refit` with converged GMM starts 
 
 After the Gaussian-mixture reseed (2026-11-07, `R/llpa_reseed.R`) the `full_refit` multiverse has median RRR 1.16, CI above 1 in 555 of 654 universes (85%) and below 1 in 19. The GMM-only refit summary is kept in `output/archive/`.
 
-## Stability rerun (2026-11-08; see output/summary_stability_full.txt, output/figures/stability)
+## Stability rerun (2026-11-08; see output/summaries/summary_stability_full.txt, output/figures/3_stability)
 
 Three changes from the October run, which is kept in `output/archive/stability_archive_2026-10-25/`:
 - **Noise level 1 is r = .90, not .94** (decided 2026-11-07 from Achenbach & Rescorla 2000, Table 8-1, preschool Total Problems r = .90, and Naar-King, Ellis & Frey 2004, p. 70, .80-.94 across scales). SEM is 5.5-5.7 raw points. The noise90 replicates reuse the noise94 random draws, scaled to the new SEM.
@@ -212,7 +260,7 @@ Three changes from the October run, which is kept in `output/archive/stability_a
 - **GMM with converged starts is more stable on log, unchanged on raw.** Log subsample ARI at k = 2/3/4: .88/.77/.76 (October .57/.70/.67). Log site split-half ARI: .23/.65/.72 (October .16/.43/.46). On log, GMM still shows no poverty effect across replicates (median RRR about 1.00, CI above 1 in 6-11%), as in the refit.
 - Other methods are essentially as in October (their replicates were not refitted).
 
-## clusterBMA consensus (2026-11-08; see output/summary_cbma.txt, output/figures/cbma)
+## clusterBMA consensus (2026-11-08; see output/summaries/summary_cbma.txt, output/figures/4_clusterbma)
 
 `12_cbma.R` combines the anchor configuration's solutions (one child per family, ≥3 waves, imputed, n = 8,331) across methods and k with the native R port of clusterBMA (Forbes et al., 2023; `../clusterBMA_port`). Hard (modal) inputs, K_BMA = 6 (empty clusters drop out), 5,000 Adam steps, seed 1, vecLib BLAS. About 85 minutes per fit.
 
@@ -233,10 +281,10 @@ Figures (`13_cbma_summary.R`): cbma1 weights, cbma2 class trajectories, cbma3 un
 - **Log is fragile** (ARI between weightings .46-.81). S_Dbw makes a 4% high class. Equal and k-balanced weights split off a near-zero class (7% and 12% of children, mean raw CBCL about 1-3 at every wave). With that class as the reference, the RRR is 1.02-1.04. Against the ordinary low class (equal weights), the near-zero class has RRR 1.12 (1.06-1.19) and the high class 1.14 (1.10-1.19): poverty is U-shaped at the bottom of the scale. For the write-up, compare with a fixed reference class rather than whichever class has the lowest mean.
 - **GMM carries 4-14% of the total weight** in every run (fewer inputs, low index values). The consensus is driven by k-means, PAM, kml, GBTM and Ward, and four of those are distance-based on the same wave scores.
 - **Allocation uncertainty** (1 − probability of the assigned class) averages .17-.20 on raw and .22-.27 on T-score and log. With hard inputs it measures disagreement between methods and k.
-- **Convergence:** the objective still changed by about 1 part in 10,000 over the last 500 steps. A 10,000-step rerun of log/equal (2026-11-08, 162 min) lowered the objective by a further 0.03% and barely moved the labels: ARI .96 with the 5,000-step fit, the same 4 clusters (sizes 9/27/38/27 vs 7/28/38/27; 136 children moved from class 2 into the near-zero class 1), the same mean uncertainty (.263) and poverty RRR 1.03 (0.98-1.09) vs 1.02 (0.96-1.08). 5,000 steps is enough for these results. Files: `output/archive/smoke/cbma_smoke/log_equal.rds`, `output/logs/cbma_conv_check.log`.
+- **Convergence:** the objective still changed by about 1 part in 10,000 over the last 500 steps. A 10,000-step rerun of log/equal (2026-11-08, 162 min) lowered the objective by a further 0.03% and barely moved the labels: ARI .96 with the 5,000-step fit, the same 4 clusters (sizes 9/27/38/27 vs 7/28/38/27; 136 children moved from class 2 into the near-zero class 1), the same mean uncertainty (.263) and poverty RRR 1.03 (0.98-1.09) vs 1.02 (0.96-1.08). 5,000 steps is enough for these results. Files: `output/archive/smoke/cbma_smoke/log_equal.rds`, `output/logs/cbma/cbma_conv_check.log`.
 - **Caveats:** only the port's Calinski-Harabasz path is compared with the original package. S_Dbw (and its minimise direction) is unit-tested only, and returns non-finite values on raw at small n (it is finite at n = 8,331). Equal, averaged and k-balanced weights are not in the original package; they skip the index and use the same consensus and factorisation code, which is parity-tested.
 
-## Single methods vs consensus (2026-11-09; see output/summary_extra_figures.txt, output/figures/extra)
+## Single methods vs consensus (2026-11-09; see output/summaries/summary_extra_figures.txt, output/figures/5_single_vs_consensus)
 
 `Rscript 14_extra_figures.R` (after 13). It puts the 32 input solutions per scale (full_refit, anchor configuration, k 2-6) next to the 16 consensus fits. The poverty model is refit on every consensus class and reproduces the stored highest-vs-lowest RRRs exactly.
 - **x1** poverty RRR of every input and consensus fit. Raw inputs spread 1.15-1.51 (median 1.34) and rise with k, because the highest class gets smaller and more severe. The consensus sits at 1.22-1.33, below most k 4-6 inputs. T-score inputs: 1.05-1.21 (median 1.14), consensus 1.18-1.20. On log the inputs are 0.93-1.19 (median 1.06) and the consensus spans almost the same range (1.02-1.26).

@@ -5,8 +5,8 @@
 - **Main multiverse: done.** Pilot (n ≈ 2,000) and full sample (n = 10,088;
   8,331 with one child per family): 780 universes, 7 methods, k 2-6 (plus k 7-8
   for the cheap methods). Poverty models, agreement and figures are finished.
-  Results are in the README ("Full-sample results"), `output/summary_full.txt`
-  and `output/figures/full/`.
+  Results are in the README ("Full-sample results"), `output/summaries/summary_full.txt`
+  and `output/figures/2_main_run/`.
 - **Stability analyses: designed, not built.** `STABILITY_PLAN.md` holds the
   design agreed on 2026-10-24: raw and log anchors × 7 methods, with seeds, 80%
   subsamples, site split-half, settings, noise and a null benchmark. It estimates
@@ -33,10 +33,10 @@ All paths are relative to the project folder
 | What | Path | Size | Participant-level? |
 |---|---|---|---|
 | Code | `00_install.R`, `00_setup.R`, `01_data.R` ... `06_figures.R`, `R/` | small | no |
-| Docs | `README.md`, `STABILITY_PLAN.md`, `HANDOFF.md` | small | no |
+| Docs | `README.md`, `docs/` (`STABILITY_PLAN.md`, `HANDOFF.md`, `DECISIONS_memory.md`) | small | no |
 | Analysis files | `data_derived/wide.rds`, `data_derived/long.rds` | 0.7 MB | **yes** |
-| Spec tables | `output/spec_tasks.rds`, `output/spec_universes.rds` | <10 KB | no |
-| Full-run results | `output/results_full.rds` | 46 MB | **yes** (class assignments) |
+| Spec tables | `output/results/spec_tasks.rds`, `output/results/spec_universes.rds` | <10 KB | no |
+| Full-run results | `output/results/results_full.rds` | 46 MB | **yes** (class assignments) |
 
 `results_full.rds` holds the base anchor solutions. The stability work compares
 settings variants and replicates against these, so it is required.
@@ -47,7 +47,7 @@ settings variants and replicates against these, so it is required.
 |---|---|---|---|
 | Raw 5.1 tables | `Dropbox/_Research_In_Progress/abcd-data-release-5.1/core/` → `mental-health/mh_p_cbcl.csv`, `abcd-general/abcd_y_lt.csv`, `abcd-general/abcd_p_demo.csv` (keep this folder structure) | 48 MB | Rebuilding `data_derived/` with `01_data.R`. Only these 3 tables are read |
 | Per-task fits | `output/universes/full/` | 61 MB | Rerunning `04_poverty.R` / `05_agreement.R` on the full run |
-| Agreement | `output/agreement_full.rds` | 7 MB | Rerunning `06_figures.R` |
+| Agreement | `output/results/agreement_full.rds` | 7 MB | Rerunning `06_figures.R` |
 | Logs | `output/logs/` | small | Sample flow, package versions, run timings |
 
 ### Don't copy
@@ -115,7 +115,7 @@ under the DUC and MCW determination):
 3. 07-10 built and smoke-tested end to end (`smoke` mode). See STABILITY_PLAN.md "As built".
 4. **Full stability run done** (2026-10-24 09:15 to 2026-10-25 ~21:40, 8 cores): all 2,860
    replicates, then 09 and 10. Results: README "Stability results",
-   output/summary_stability_full.txt, output/figures/stability/. The 16 Ward average-linkage
+   output/summaries/summary_stability_full.txt, output/figures/3_stability/. The 16 Ward average-linkage
    replicates were rerun after a silhouette fix (single class in the 3,000-child sample).
    Log timestamps in output/logs/stability_full.log run 2 h behind from Sunday afternoon
    (the R process kept its start-up time zone); file times are correct.
@@ -131,7 +131,15 @@ Done since the stability run:
 - **clusterBMA consensus 2026-11-08**: 16 fits (README "clusterBMA consensus").
 - **Folder tidied 2026-11-09**: superseded outputs moved to `output/archive/` (pilot, smoke,
   October stability, GMM optima experiment), old logs to `output/logs/archive/`, and one-off
-  scripts to `archive/code/` (see archive/README.md). Nothing was deleted.
+  scripts to `archive/code/` (see ../archive/README.md). Nothing was deleted.
+- **Race/ethnicity adjustment 2026-11-09** is the primary poverty model; age/sex/site only is
+  sensitivity (README "Race/ethnicity adjustment"). `abcd_p_demo.csv` (5.1) is at
+  `~/Desktop/RStudio/abcd_p_demo.csv` on this Mac, outside the release folder structure; to
+  rerun `01b_race.R`, point `ABCD_REL` at a folder holding `abcd-general/abcd_p_demo.csv`
+  (a symlink is enough). RRRs with a highest class under 10 children are not estimable.
+- **Folder restructured 2026-11-09**: results, summaries and purpose-named figure folders
+  under `output/`, planning docs in `docs/`, figure index in `docs/FIGURES.md` (README
+  "Folder layout"). Paths are set in `00_setup.R`.
 - Code (no data) on GitHub: `jlhanson5/abcd-clustering-multiverse` and `jlhanson5/clusterBMA-port`, both private.
 
 Still open:

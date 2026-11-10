@@ -49,7 +49,7 @@ dest <- file.path(OUT, if (smoke) "cbma_smoke" else "cbma")
 dir.create(dest, showWarnings = FALSE, recursive = TRUE)
 K_BMA <- 6
 
-res <- readRDS(file.path(OUT, "results_full_refit.rds"))
+res <- readRDS(file.path(RES, "results_full_refit.rds"))
 wide <- readRDS(file.path(DER, "wide.rds"))
 anchor <- res$fits |>
   filter(family == "one", config == "ge3_imp", scale %in% scales, k %in% 2:6,

@@ -176,8 +176,8 @@ Run order:
 ```
 Rscript 07_stability_spec.R full          # replicate table, null model, base solutions
 Rscript 08_stability_run.R full 8         # restartable; filters e.g. anchor=raw,maxrep=1
-Rscript 09_stability_summary.R full 8     # output/stability/summary.rds + output/summary_stability_full.txt
-Rscript 10_stability_figures.R full       # output/figures/stability/
+Rscript 09_stability_summary.R full 8     # output/stability/summary.rds + output/summaries/summary_stability_full.txt
+Rscript 10_stability_figures.R full       # output/figures/3_stability/
 ```
 `smoke` in place of `full` runs the whole pipeline on 600 children with 2 replicates per type
 (output/stability_smoke/), for checking code changes.

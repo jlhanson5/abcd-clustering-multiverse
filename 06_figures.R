@@ -13,17 +13,17 @@
 # Supplement:
 #   figS1_class_gradient     every class's log RRR vs its mean CBCL, by method
 #   figS2_k_extension        poverty RRR at k 2-8 for the five cheap methods
-# Tables: output/summary_<mode>.txt
+# Tables: output/summaries/summary_<mode>.txt
 # =============================================================================
 
 source("00_setup.R")
 suppressPackageStartupMessages({ library(patchwork); library(ggalluvial) })
 
 mode <- commandArgs(trailingOnly = TRUE)[1]; if (is.na(mode)) mode <- "pilot"
-res  <- readRDS(file.path(OUT, paste0("results_", mode, ".rds")))
-agr  <- readRDS(file.path(OUT, paste0("agreement_", mode, ".rds")))
-figd <- file.path(FIG, mode); dir.create(figd, recursive = TRUE, showWarnings = FALSE)
-sumf <- file.path(OUT, paste0("summary_", mode, ".txt")); unlink(sumf)
+res  <- readRDS(file.path(RES, paste0("results_", mode, ".rds")))
+agr  <- readRDS(file.path(RES, paste0("agreement_", mode, ".rds")))
+figd <- fig_dir(mode)
+sumf <- file.path(SUMM, paste0("summary_", mode, ".txt")); unlink(sumf)
 say  <- function(...) { cat(..., "\n"); cat(..., "\n", file = sumf, append = TRUE) }
 
 METHODS <- c("kmeans", "pam", "ward", "llpa", "kml", "gbtm", "gmm")
@@ -75,7 +75,7 @@ top <- ggplot(sc, aes(rank, rrr)) +
   scale_y_log10() +
   labs(x = NULL, y = "RRR per halving of income\n(highest vs lowest class, log scale)",
        title = "Poverty and membership in the highest-symptom class, across the multiverse",
-       subtitle = sprintf("%d universes (k = 2-6), sorted by effect size. Multinomial logit, adjusted for age, sex, site.", nrow(sc))) +
+       subtitle = sprintf("%d universes (k = 2-6), sorted by effect size. Multinomial logit, adjusted for age, sex, site and race/ethnicity.", nrow(sc))) +
   theme(axis.text.x = element_blank(), legend.position = "top", legend.justification = "left")
 
 grid_df <- sc |>

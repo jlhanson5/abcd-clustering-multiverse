@@ -3,7 +3,7 @@
 # anchor configuration: wave, one per family, >=3 waves imputed, k 2-6) next to
 # the clusterBMA consensus fits (12_cbma.R).
 #   Rscript 14_extra_figures.R
-# Figures in output/figures/extra/:
+# Figures in output/figures/5_single_vs_consensus/:
 #   x1_rrr_inputs_vs_consensus  poverty RRR of every input solution and every consensus fit
 #   x2_class_map                size and mean CBCL of every class; highest classes marked
 #   x3_crosswalk                consensus (equal weights) classes vs each method's k = 3 classes
@@ -11,14 +11,14 @@
 #   x5_class_gradient           RRR of every class vs the lowest, against class mean CBCL
 #   x6_highest_share            share of input solutions that put each child in the highest class
 #   x7_consensus_agreement      ARI between all 16 consensus fits, across scales
-# Table: output/summary_extra_figures.txt
+# Table: output/summaries/summary_extra_figures.txt
 # =============================================================================
 
 source("00_setup.R")
 suppressPackageStartupMessages({ library(nnet); library(mclust) })
 
-figd <- file.path(FIG, "extra"); dir.create(figd, recursive = TRUE, showWarnings = FALSE)
-sumf <- file.path(OUT, "summary_extra_figures.txt"); unlink(sumf)
+figd <- fig_dir("extra")
+sumf <- file.path(SUMM, "summary_extra_figures.txt"); unlink(sumf)
 say <- function(...) { cat(..., "\n"); cat(..., "\n", file = sumf, append = TRUE) }
 pt <- function(x) paste(capture.output(print(x, n = 200, width = 200)), collapse = "\n")
 
@@ -44,10 +44,10 @@ sig_of <- function(lo, hi) factor(case_when(lo > 1 ~ "CI above 1", hi < 1 ~ "CI 
                                   names(SIG_COL))
 
 # ---- Data -------------------------------------------------------------------------------------
-wide <- readRDS(file.path(DER, "wide.rds")) |>
+wide <- readRDS(file.path(DER, "wide.rds")) |> add_race() |>
   mutate(income_halving = -log2(income), cbcl_mean = rowMeans(across(all_of(paste0("imp_r_", WAVES)))),
          sex = factor(sex), site = factor(site))
-res <- readRDS(file.path(OUT, "results_full_refit.rds"))
+res <- readRDS(file.path(RES, "results_full_refit.rds"))
 files <- list.files(file.path(OUT, "cbma"), "[.]rds$", full.names = TRUE)
 runs <- setNames(lapply(files, readRDS), sub("[.]rds$", "", basename(files)))
 runs <- runs[order(match(vapply(runs, `[[`, "", "scale"), names(S_LAB)),
@@ -68,11 +68,12 @@ L <- sapply(inp$universe_id, lab_of)              # n x inputs, classes relabell
 stopifnot(!anyNA(L))
 cm <- wide$cbcl_mean[match(ids, wide$src_subject_id)]
 
-# ---- Poverty model on every consensus class (as in 04_poverty.R / 12_cbma.R) ------------------------
-pov_all <- function(labels) {
+# ---- Poverty model on every consensus class (as in 04_poverty.R / 12b_cbma_poverty.R) ----------------
+# Race-adjusted (primary since 2026-11-09); input RRRs from results_full_refit.rds are adjusted too.
+pov_all <- function(labels, f = POV_F$adj) {
   dat <- tibble(src_subject_id = ids, class = factor(labels)) |> inner_join(wide, by = "src_subject_id") |>
-    mutate(site = droplevels(site))
-  m <- multinom(class ~ income_halving + age_bl + sex + site, data = dat, trace = FALSE, maxit = 1000, MaxNWts = 5000)
+    pov_rows(f) |> mutate(site = droplevels(site), race = droplevels(race))
+  m <- multinom(f, data = dat, trace = FALSE, maxit = 1000, MaxNWts = 5000, Hess = TRUE)
   cf <- coef(m); V <- vcov(m)
   if (is.null(dim(cf))) cf <- matrix(cf, 1, dimnames = list(levels(dat$class)[2], names(cf)))
   cls <- rownames(cf)
@@ -83,9 +84,12 @@ pov_all <- function(labels) {
     mutate(rrr = exp(est), lo = exp(est - 1.96 * se), hi = exp(est + 1.96 * se))
 }
 cpov <- bind_rows(lapply(runs, \(r) bind_cols(lab(r)[1, ], pov_all(r$labels))))
-chk <- cpov |> group_by(scale, weighting) |> slice_max(class, n = 1) |> ungroup() |>
-  mutate(stored = vapply(runs, \(r) r$poverty$rrr, 1))
-stopifnot(max(abs(chk$rrr - chk$stored)) < 1e-6)   # same model as 12_cbma.R
+cp12b <- readRDS(file.path(RES, "cbma_poverty.rds")) |> filter(model == "adj")
+chk <- cpov |> transmute(sc = names(S_LAB)[as.integer(scale)], wt = names(W_LAB)[as.integer(weighting)], class, rrr) |>
+  left_join(cp12b, by = c(sc = "scale", wt = "weighting", "class"))
+stopifnot(nrow(chk) == nrow(cp12b), max(abs(chk$rrr.x - chk$rrr.y)) < 1e-6)   # same model as 12b_cbma_poverty.R
+chk_u <- vapply(runs, \(r) { p <- pov_all(r$labels, POV_F$unadj); p$rrr[p$class == max(p$class)] - r$poverty$rrr }, 1)
+stopifnot(max(abs(chk_u)) < 1e-6)                                            # unadjusted = 12_cbma.R's stored model
 
 # ---- x1: poverty RRR, inputs vs consensus ------------------------------------------------------------
 top <- cpov |> group_by(scale, weighting) |> slice_max(class, n = 1) |> ungroup()
@@ -109,7 +113,7 @@ p1 <- ggplot(d1, aes(rrr, row)) +
   scale_x_log10() +
   labs(x = "Poverty RRR per halving of income, highest vs lowest class (log scale)", y = NULL,
        title = "Single-method solutions and the consensus",
-       subtitle = "Dots: the inputs clusterBMA combines (full_refit, anchor configuration). Diamonds: the five consensus weightings.\nDotted line: the pooled all-scales consensus (equal weights).") +
+       subtitle = "Dots: the inputs clusterBMA combines (full_refit, anchor configuration). Diamonds: the five consensus weightings.\nDotted line: the pooled all-scales consensus (equal weights). Adjusted for age, sex, site and race/ethnicity.") +
   theme(legend.position = "top", legend.justification = "left")
 save(p1, "x1_rrr_inputs_vs_consensus", 8, 9)
 

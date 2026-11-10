@@ -1,5 +1,5 @@
 # =============================================================================
-# 10_stability_figures.R: stability figures (see STABILITY_PLAN.md).
+# 10_stability_figures.R: stability figures (see docs/STABILITY_PLAN.md).
 #   Rscript 10_stability_figures.R full|smoke
 # Main:
 #   stab1_heatmap      mean ARI by method x k; facets perturbation x anchor. Seeds
@@ -22,7 +22,7 @@ suppressPackageStartupMessages(library(patchwork))
 mode <- commandArgs(trailingOnly = TRUE)[1]; if (is.na(mode)) mode <- "full"
 SOUT <- file.path(OUT, if (mode == "smoke") "stability_smoke" else "stability")
 S    <- readRDS(file.path(SOUT, "summary.rds"))
-figd <- file.path(FIG, if (mode == "smoke") "stability_smoke" else "stability")
+figd <- fig_dir(if (mode == "smoke") "stability_smoke" else "stability")
 dir.create(figd, recursive = TRUE, showWarnings = FALSE)
 
 METHODS <- c("kmeans", "pam", "ward", "llpa", "kml", "gbtm", "gmm")

@@ -1,8 +1,8 @@
 # =============================================================================
 # 13_cbma_summary.R: compare the clusterBMA consensus fits from 12_cbma.R.
 #   Rscript 13_cbma_summary.R [dir]          # default output/cbma
-# Tables: output/summary_cbma.txt (summary_cbma_smoke.txt for the smoke dir)
-# Figures in output/figures/cbma/:
+# Tables: output/summaries/summary_cbma.txt (summary_cbma_smoke.txt for the smoke dir)
+# Figures in output/figures/4_clusterbma/:
 #   cbma1_weights        weight of every input, by method and k, per scale x weighting
 #   cbma2_trajectories   consensus classes: mean raw CBCL by wave, with class sizes
 #   cbma3_uncertainty    per-child allocation uncertainty, per scale x weighting
@@ -18,8 +18,8 @@ suppressPackageStartupMessages({ library(patchwork); library(mclust) })
 
 dir <- commandArgs(trailingOnly = TRUE)[1]; if (is.na(dir)) dir <- file.path(OUT, "cbma")
 smoke <- grepl("smoke", dir)
-figd <- file.path(FIG, if (smoke) "cbma_smoke" else "cbma"); dir.create(figd, recursive = TRUE, showWarnings = FALSE)
-sumf <- file.path(OUT, if (smoke) "summary_cbma_smoke.txt" else "summary_cbma.txt"); unlink(sumf)
+figd <- fig_dir(if (smoke) "cbma_smoke" else "cbma")
+sumf <- file.path(SUMM, if (smoke) "summary_cbma_smoke.txt" else "summary_cbma.txt"); unlink(sumf)
 say <- function(...) { cat(..., "\n"); cat(..., "\n", file = sumf, append = TRUE) }
 pt <- function(x) paste(capture.output(print(x, n = 200, width = 200)), collapse = "\n")
 
@@ -41,6 +41,18 @@ save <- function(p, name, w, h) ggsave(file.path(figd, paste0(name, ".png")), p,
 files <- list.files(dir, "\\.rds$", full.names = TRUE)
 runs <- setNames(lapply(files, readRDS), sub("\\.rds$", "", basename(files)))
 lab <- function(r) tibble(scale = factor(S_LAB[r$scale], S_LAB), weighting = factor(W_LAB[r$weighting], W_LAB))
+# Poverty: race-adjusted (primary since 2026-11-09) and unadjusted, from 12b_cbma_poverty.R.
+# The smoke dir keeps the unadjusted model stored by 12_cbma.R.
+if (!smoke) {
+  cp <- readRDS(file.path(RES, "cbma_poverty.rds")) |> filter(top)
+  top_of <- function(r, m) filter(cp, scale == r$scale, weighting == r$weighting, model == m) |>
+    transmute(K, est, se, rrr, lo, hi, top_n = n, top_mean = class_mean)
+  for (nm in names(runs)) {
+    runs[[nm]]$poverty <- top_of(runs[[nm]], "adj")
+    runs[[nm]]$poverty_unadj <- top_of(runs[[nm]], "unadj")
+    stopifnot(nrow(runs[[nm]]$poverty) == 1, nrow(runs[[nm]]$poverty_unadj) == 1)
+  }
+}
 say(sprintf("clusterBMA consensus fits (%s): %d runs. Port %s, %s.", format(Sys.time(), "%Y-%m-%d %H:%M"),
             length(runs), runs[[1]]$port, runs[[1]]$blas))
 
@@ -54,9 +66,11 @@ ov <- bind_rows(lapply(runs, function(r) bind_cols(lab(r), tibble(
   ci = if (!is.null(r$poverty$rrr)) sprintf("%.2f-%.2f", r$poverty$lo, r$poverty$hi) else NA,
   top_pct = if (!is.null(r$poverty$top_n)) round(100 * r$poverty$top_n / r$n, 1) else NA,
   top_mean = if (!is.null(r$poverty$top_mean)) round(r$poverty$top_mean, 1) else NA,
+  rrr_unadj = if (!is.null(r$poverty_unadj$rrr)) round(r$poverty_unadj$rrr, 2) else NA,
   minutes = round(sum(r$minutes)))))) |> arrange(scale, weighting)
 say("\nOverview. eff_inputs = 1 / sum(w^2), the number of equally weighted inputs with the same spread.",
-    "sizes: % of children per consensus class, lowest to highest mean CBCL. rrr: poverty RRR, highest vs lowest class.")
+    "sizes: % of children per consensus class, lowest to highest mean CBCL. rrr: poverty RRR, highest vs lowest class,",
+    "adjusted for age, sex, site and race/ethnicity (primary); rrr_unadj: without race/ethnicity.")
 say(pt(ov))
 
 # ---- Weights by method -----------------------------------------------------------------------
@@ -138,6 +152,7 @@ pv <- ov |> filter(!is.na(rrr)) |>
 p5 <- ggplot(pv, aes(rrr, weighting)) +
   geom_vline(xintercept = 1, color = INK2, linewidth = 0.4, linetype = "dashed") +
   geom_errorbar(aes(xmin = lo, xmax = hi), width = 0, orientation = "y", color = "#5b9be6", linewidth = 0.7) +
+  { if (!all(is.na(pv$rrr_unadj))) geom_point(aes(x = rrr_unadj), shape = 21, size = 2.2, fill = "white", color = INK2, stroke = 0.6) } +
   geom_point(size = 2.4, color = "#0d3266") +
   geom_text(aes(x = max(hi) * 1.02, label = lab), hjust = 0, size = 2.5, color = INK2) +
   facet_grid(scale ~ ., scales = "free_y", space = "free_y") +
@@ -145,7 +160,8 @@ p5 <- ggplot(pv, aes(rrr, weighting)) +
   scale_y_discrete(limits = rev) +
   labs(x = "Poverty RRR per halving of income, highest vs lowest consensus class (95% CI, log scale)", y = NULL,
        title = "Poverty gradient in every consensus fit",
-       subtitle = "Text: RRR, then the share of children in the highest and lowest classes. A small lowest class is a near-zero group.") +
+       subtitle = paste("Filled: adjusted for age, sex, site and race/ethnicity, with 95% CI. Open: without race/ethnicity.",
+                        "Text: adjusted RRR, then the share of children in the highest and lowest classes.")) +
   theme(strip.text.y = element_text(angle = 0))
 save(p5, "cbma5_poverty", 9, 6.5)
 

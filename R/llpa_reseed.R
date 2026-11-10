@@ -20,7 +20,7 @@ stopifnot(mode != "full", dir.exists(file.path(UNIV, mode)))
 
 wide  <- readRDS(file.path(DER, "wide.rds"))
 long  <- readRDS(file.path(DER, "long.rds"))
-tasks <- readRDS(file.path(OUT, "spec_tasks.rds")) |> mutate(all_ids = list(task_id))
+tasks <- readRDS(file.path(RES, "spec_tasks.rds")) |> mutate(all_ids = list(task_id))
 todo  <- filter(tasks, method == "llpa")
 dest  <- file.path(UNIV, mode)
 

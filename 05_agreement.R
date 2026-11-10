@@ -4,14 +4,14 @@
 # Adjusted Rand index (ARI) and normalised mutual information (NMI, sqrt
 # normalisation), computed on the children the two universes share. Agreement
 # does not depend on class labels, so the relabelling in 04 does not matter here.
-# Output: output/agreement_<mode>.rds (ARI, NMI, n_common matrices; universe order).
+# Output: output/results/agreement_<mode>.rds (ARI, NMI, n_common matrices; universe order).
 # =============================================================================
 
 source("00_setup.R")
 suppressPackageStartupMessages(library(parallel))
 
 mode <- commandArgs(trailingOnly = TRUE)[1]; if (is.na(mode)) mode <- "pilot"
-res  <- readRDS(file.path(OUT, paste0("results_", mode, ".rds")))
+res  <- readRDS(file.path(RES, paste0("results_", mode, ".rds")))
 
 keep <- res$fits |>
   filter(is.na(error), !degenerate | is.na(degenerate)) |>
@@ -58,6 +58,6 @@ sym <- function(M) { M[lower.tri(M)] <- t(M)[lower.tri(M)]; M }
 ARI <- sym(ARI); NMI <- sym(NMI); NC <- sym(NC)
 
 saveRDS(list(ARI = ARI, NMI = NMI, n_common = NC, universes = keep),
-        file.path(OUT, paste0("agreement_", mode, ".rds")))
+        file.path(RES, paste0("agreement_", mode, ".rds")))
 cat(sprintf("Agreement: %d universes, %d pairs, %.1f min\n", U, U * (U - 1) / 2,
             as.numeric(difftime(Sys.time(), t0, units = "mins"))))

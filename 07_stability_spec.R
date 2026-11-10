@@ -1,5 +1,5 @@
 # =============================================================================
-# 07_stability_spec.R: the stability replicate table (see STABILITY_PLAN.md).
+# 07_stability_spec.R: the stability replicate table (see docs/STABILITY_PLAN.md).
 #   Rscript 07_stability_spec.R full|smoke
 # One row per replicate: anchor x method x perturbation x replicate (x settings
 # variant). A replicate fits every k (2-6), like a task in 02_spec.R.
@@ -62,7 +62,7 @@ stopifnot(!anyDuplicated(reps$rep_id))
 
 # ---- Base solutions from the main run ----------------------------------------------
 # The anchor universes: one per family, ge3_imp, age metric for GBTM/GMM.
-res <- readRDS(file.path(OUT, if (smoke) "results_full.rds" else "results_full_refit.rds"))   # primary run since 2026-11-07
+res <- readRDS(file.path(RES, if (smoke) "results_full.rds" else "results_full_refit.rds"))   # primary run since 2026-11-07
 uid <- expand_grid(anchor = STAB_ANCHORS, method = c(TRAJ, CHEAP), k = K_STAB) |>
   mutate(universe_id = sprintf("%s_%s_%s_one_ge3_imp_k%d", method, anchor,
                                ifelse(method %in% TRAJ, "age", "wave"), k))

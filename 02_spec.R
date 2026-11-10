@@ -1,8 +1,8 @@
 # =============================================================================
 # 02_spec.R: the specification table.
-#   output/spec_tasks.rds     : one row per fitting task (method x data config);
+#   output/results/spec_tasks.rds     : one row per fitting task (method x data config);
 #                               a task fits every k for that method at once
-#   output/spec_universes.rds : one row per universe (task x k)
+#   output/results/spec_universes.rds : one row per universe (task x k)
 #
 # Data configs (sample x missing-data handling):
 #   ge3_imp    >= 3 of 4 waves, missing wave filled by the shared single imputation
@@ -35,9 +35,9 @@ universes <- tasks |>
   mutate(supplement = k %in% K_SUPP,
          universe_id = paste0(task_id, "_k", k))
 
-dir.create(OUT, showWarnings = FALSE)
-saveRDS(tasks, file.path(OUT, "spec_tasks.rds"))
-saveRDS(universes, file.path(OUT, "spec_universes.rds"))
+dir.create(RES, recursive = TRUE, showWarnings = FALSE)
+saveRDS(tasks, file.path(RES, "spec_tasks.rds"))
+saveRDS(universes, file.path(RES, "spec_universes.rds"))
 
 cat("Tasks:", nrow(tasks), "\n")
 cat("Universes, main (k 2-6):", sum(!universes$supplement),

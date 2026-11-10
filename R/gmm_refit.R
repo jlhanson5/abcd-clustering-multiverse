@@ -27,7 +27,7 @@ dir.create(dest, showWarnings = FALSE)
 
 wide <- readRDS(file.path(DER, "wide.rds"))
 long <- readRDS(file.path(DER, "long.rds"))
-all_tasks <- readRDS(file.path(OUT, "spec_tasks.rds")) |> filter(method == "gmm")
+all_tasks <- readRDS(file.path(RES, "spec_tasks.rds")) |> filter(method == "gmm")
 tasks <- filter(all_tasks, grepl(regex, task_id))
 f <- lcmm_formulas(gmm = TRUE)
 logf <- file.path(LOGS, "gmm_refit.log")

@@ -2,7 +2,7 @@
 # 09_stability_summary.R: stability metrics from the replicates in 08.
 #   Rscript 09_stability_summary.R full|smoke [cores]
 # Output: output/stability/summary.rds (tables below) and
-#         output/summary_stability_<mode>.txt
+#         output/summaries/summary_stability_<mode>.txt
 #   fits      fit indices, one row per replicate x k x part
 #   pairs     ARI between replicate solutions (shared children), plus each
 #             replicate vs the primary run's (full_refit) base solution (j = 0)
@@ -17,7 +17,8 @@
 #   jaccard   per base class, the best-matching replicate class's Jaccard
 #   profiles  class sizes and mean raw CBCL per wave, every solution
 #   ksel      k picked by silhouette (max) / BIC (min), per replicate
-#   poverty   RRR (highest vs lowest class, per halving of income) per solution
+#   poverty   RRR (highest vs lowest class, per halving of income) per solution,
+#             race-adjusted (primary since 2026-11-09); poverty_unadj: age/sex/site only
 #   starts    GBTM/GMM start recording: per-start log-likelihoods, replication
 #   settings  each settings variant vs base: full-data ARI; subsample stability
 #   base      the primary run's (full_refit) anchor fits (indices + poverty) for reference
@@ -31,7 +32,7 @@ args  <- commandArgs(trailingOnly = TRUE)
 mode  <- if (length(args) >= 1) args[1] else "full"
 cores <- if (length(args) >= 2) as.integer(args[2]) else 8
 SOUT  <- file.path(OUT, if (mode == "smoke") "stability_smoke" else "stability")
-sumf  <- file.path(OUT, paste0("summary_stability_", mode, ".txt")); unlink(sumf)
+sumf  <- file.path(SUMM, paste0("summary_stability_", mode, ".txt")); unlink(sumf)
 say   <- function(...) { cat(..., "\n"); cat(..., "\n", file = sumf, append = TRUE) }
 t_all <- Sys.time()
 
@@ -190,28 +191,38 @@ ksel <- fits |> filter(is.na(error), k_found == k) |>
             k_bic = if (all(is.na(bic))) NA_integer_ else k[which.min(bic)], .groups = "drop")
 
 # ---- Poverty model per solution ------------------------------------------------------------------------
-wide <- readRDS(file.path(DER, "wide.rds"))
+# Primary: race-adjusted (POV_F$adj, 00_setup.R); poverty_unadj: age/sex/site only.
+wide <- readRDS(file.path(DER, "wide.rds")) |> add_race()
 cov  <- wide[match(base$ids, wide$src_subject_id), ] |>
-  transmute(income_halving = -log2(income), age_bl, sex = factor(sex), site = factor(site))
-poverty_one <- function(idx, cls) {
-  dat <- cov[idx, ]; dat$class <- factor(cls); dat$site <- droplevels(dat$site)
+  transmute(income_halving = -log2(income), age_bl, sex = factor(sex), site = factor(site), race)
+poverty_one <- function(idx, cls, f) {
+  dat <- cov[idx, ]; dat$class <- factor(cls)
+  dat <- pov_rows(dat, f); dat$site <- droplevels(dat$site); dat$race <- droplevels(dat$race)
   K <- nlevels(dat$class); if (K < 2) return(NULL)
-  fit <- tryCatch(multinom(class ~ income_halving + age_bl + sex + site, data = dat,
-                           trace = FALSE, maxit = 1000, MaxNWts = 5000), error = function(e) NULL)
+  if (sum(dat$class == levels(dat$class)[K]) < MIN_TOP_N) return(NULL)   # not estimable (00_setup.R)
+  fit <- tryCatch(multinom(f, data = dat, trace = FALSE, maxit = 1000, MaxNWts = 5000, Hess = TRUE),
+                  error = function(e) NULL)
   if (is.null(fit)) return(NULL)
   V <- tryCatch(vcov(fit), error = function(e) NULL); if (is.null(V)) return(NULL)
   term <- if (K == 2) "income_halving" else paste0(levels(dat$class)[K], ":income_halving")
   cf <- coef(fit); est <- if (K == 2) cf[["income_halving"]] else cf[levels(dat$class)[K], "income_halving"]
-  tibble(K = K, est = est, se = sqrt(max(V[term, term], 0)), mn_converged = fit$convergence == 0)
+  se <- sqrt(max(V[term, term], 0))
+  if (!is.finite(est) || !is.finite(se) || se <= 0 || se > MAX_SE) return(NULL)   # separation: not estimable (00_setup.R)
+  tibble(K = K, est = est, se = se, mn_converged = fit$convergence == 0)
 }
-t0 <- Sys.time()
-pov <- mclapply(seq_len(nrow(sol)), \(i) poverty_one(sol$idx[[i]], sol$cls[[i]]), mc.cores = cores)
-has <- !vapply(pov, is.null, logical(1))
-poverty <- bind_cols(sol[has, c("rep_id", "anchor", "method", "ptype", "variant", "rep", "k", "part")],
-                     bind_rows(pov[has])) |>
-  mutate(rrr = exp(est), lo = exp(est - 1.96 * se), hi = exp(est + 1.96 * se))
-say(sprintf("Poverty models: %d of %d solutions (%.1f min).", nrow(poverty), nrow(sol),
-            as.numeric(difftime(Sys.time(), t0, units = "mins"))))
+poverty_all <- function(f) {
+  t0 <- Sys.time()
+  pov <- mclapply(seq_len(nrow(sol)), \(i) poverty_one(sol$idx[[i]], sol$cls[[i]], f), mc.cores = cores)
+  has <- !vapply(pov, is.null, logical(1))
+  out <- bind_cols(sol[has, c("rep_id", "anchor", "method", "ptype", "variant", "rep", "k", "part")],
+                   bind_rows(pov[has])) |>
+    mutate(rrr = exp(est), lo = exp(est - 1.96 * se), hi = exp(est + 1.96 * se))
+  say(sprintf("Poverty models (%s): %d of %d solutions (%.1f min).", deparse(f[[3]]), nrow(out), nrow(sol),
+              as.numeric(difftime(Sys.time(), t0, units = "mins"))))
+  out
+}
+poverty <- poverty_all(POV_F$adj)
+poverty_unadj <- poverty_all(POV_F$unadj)
 
 # ---- Start recording ----------------------------------------------------------------------------------
 starts <- bind_rows(lapply(startrec, function(r) bind_rows(lapply(r$fits, function(o) {
@@ -244,14 +255,15 @@ sub_stab <- pairs |> filter(j > 0, i <= 20, j <= 20,
 settings <- full_join(var_full, sub_stab, by = c("anchor", "method", "variant", "k"))
 
 # ---- Base (primary-run, full_refit) anchor fits, for reference --------------------------------------------------------
-res <- readRDS(file.path(OUT, "results_full_refit.rds"))   # primary run since 2026-11-07
+res <- readRDS(file.path(RES, "results_full_refit.rds"))   # primary run since 2026-11-07
 basefits <- res$fits |> filter(universe_id %in% ba$universes$universe_id) |>
   left_join(select(ba$universes, universe_id, anchor), by = "universe_id") |>
-  select(universe_id, anchor, method, k, bic, entropy, asw, k_found, min_prop, est, se, rrr, lo, hi, top_n, top_mean)
+  select(universe_id, anchor, method, k, bic, entropy, asw, k_found, min_prop, est, se, rrr, lo, hi, top_n, top_mean,
+         rrr_unadj, lo_unadj, hi_unadj)
 rm(res); invisible(gc())
 
 saveRDS(list(fits = fits, pairs = pairs, site = site, child = child, child_hist = child_hist,
-             jaccard = jaccard, profiles = profiles, ksel = ksel, poverty = poverty,
+             jaccard = jaccard, profiles = profiles, ksel = ksel, poverty = poverty, poverty_unadj = poverty_unadj,
              starts = starts, settings = settings, base = basefits, meta = meta),
         file.path(SOUT, "summary.rds"))
 
@@ -271,12 +283,15 @@ say("\nChild-level consistency, all real-data perturbations pooled (share of chi
 say(pt(child |> filter(ptype == "pooled") |>
   transmute(anchor, method, k, reliably_high = round(reliably_high, 3), boundary = round(boundary, 3),
             never_high = round(never_high, 3), base_top_reliable = round(base_top_reliable, 2))))
-say("\nPoverty RRR across replicates (base variant): median, IQR, share with CI above 1:")
-say(pt(poverty |> filter(variant == "base", ptype != "starts") |>
+pov_tab <- function(p) pt(p |> filter(variant == "base", ptype != "starts") |>
   group_by(anchor, ptype, method) |>
   summarise(n = n(), median = round(median(rrr), 2), q25 = round(quantile(rrr, .25), 2),
             q75 = round(quantile(rrr, .75), 2), ci_above_1 = round(mean(lo > 1), 2),
-            ci_excl_1 = round(mean(lo > 1 | hi < 1), 2), .groups = "drop")))
+            ci_excl_1 = round(mean(lo > 1 | hi < 1), 2), .groups = "drop"))
+say("\nPoverty RRR across replicates (base variant), race-adjusted (primary): median, IQR, share with CI above 1:")
+say(pov_tab(poverty))
+say("\nSame, without race adjustment (sensitivity; age, sex, site only):")
+say(pov_tab(poverty_unadj))
 say("\nNull benchmark vs real data (mean silhouette, relative entropy):")
 say(pt(bind_rows(
   basefits |> transmute(data = "real (base)", anchor, method, k, asw, entropy),

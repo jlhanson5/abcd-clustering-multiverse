@@ -28,7 +28,7 @@ dir.create(dest, recursive = TRUE, showWarnings = FALSE)
 
 wide <- readRDS(file.path(DER, "wide.rds"))
 long <- readRDS(file.path(DER, "long.rds"))
-tasks <- readRDS(file.path(OUT, "spec_tasks.rds"))
+tasks <- readRDS(file.path(RES, "spec_tasks.rds"))
 files <- list.files(file.path(OUT, "gmm_refit"), "\\.rds$", full.names = TRUE)
 recs <- lapply(files, readRDS)
 key <- tibble(task_id = map_chr(recs, "task_id"), k = map_int(recs, "k"), row = seq_along(recs))
@@ -88,6 +88,6 @@ for (i in seq_len(nrow(tasks))) {
 }
 
 summ <- bind_rows(summ)
-saveRDS(summ, file.path(OUT, paste0("gmm_refit_summary_", mode, ".rds")))
+saveRDS(summ, file.path(RES, paste0("gmm_refit_summary_", mode, ".rds")))
 cat(sprintf("Task files written: %d. GMM universes refitted: %d.\n", length(list.files(dest)), nrow(summ)))
 print(dplyr::count(summ, k, flag), n = 30)

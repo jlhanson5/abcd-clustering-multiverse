@@ -1,7 +1,7 @@
 # =============================================================================
 # 11_refit_figures.R: additional figures for the primary run (full_refit).
 #   Rscript 11_refit_figures.R [mode]        # default full_refit
-# Written to output/figures/<mode>/ next to 06_figures.R's figures (main, k 2-6):
+# Written to fig_dir(mode) (output/figures/1_spec_curve for full_refit) next to 06_figures.R's figures (main, k 2-6):
 #   fig8_robustness        poverty RRR median and IQR, share with CI above 1, for
 #                          subsets of the multiverse (by fork, without flagged GMM,
 #                          and the main run for comparison)
@@ -10,17 +10,19 @@
 #   fig11_trajectories     class mean raw CBCL by wave, anchor configuration, k = 3
 #   fig12_gmm_refit        GMM k 2-4: main-run vs refit RRR, and how often starts
 #                          converge (R/gmm_refit.R)
-# Tables: output/summary_<mode>_extra.txt
+#   fig13_race_sensitivity every universe's RRR with race/ethnicity adjustment
+#                          (primary) vs without (age, sex, site only)
+# Tables: output/summaries/summary_<mode>_extra.txt
 # =============================================================================
 
 source("00_setup.R")
 suppressPackageStartupMessages(library(patchwork))
 
 mode <- commandArgs(trailingOnly = TRUE)[1]; if (is.na(mode)) mode <- "full_refit"
-res  <- readRDS(file.path(OUT, paste0("results_", mode, ".rds")))
-main_run <- readRDS(file.path(OUT, "results_full.rds"))$fits
-figd <- file.path(FIG, mode); dir.create(figd, recursive = TRUE, showWarnings = FALSE)
-sumf <- file.path(OUT, paste0("summary_", mode, "_extra.txt")); unlink(sumf)
+res  <- readRDS(file.path(RES, paste0("results_", mode, ".rds")))
+main_run <- readRDS(file.path(RES, "results_full.rds"))$fits
+figd <- fig_dir(mode)
+sumf <- file.path(SUMM, paste0("summary_", mode, "_extra.txt")); unlink(sumf)
 say  <- function(...) { cat(..., "\n"); cat(..., "\n", file = sumf, append = TRUE) }
 
 METHODS <- c("kmeans", "pam", "ward", "llpa", "kml", "gbtm", "gmm")
@@ -194,5 +196,26 @@ p12b <- ggplot(cv, aes(factor(k), row, fill = share)) +
        subtitle = "50 starts per data configuration, 6 configurations per row") +
   theme(panel.grid = element_blank())
 save(p12a / p12b + plot_layout(heights = c(1.15, 1)), "fig12_gmm_refit", 10, 8.5)
+
+# ---- Fig 13: race/ethnicity adjustment (primary) vs age, sex, site only ----------------------
+rs <- ok |> filter(!is.na(rrr_unadj)) |> mutate(ratio = rrr / rrr_unadj, sig_unadj = sig_of(lo_unadj, hi_unadj))
+say("\nRace/ethnicity adjustment: RRR adjusted / RRR without race, by scale (median, IQR), and CI status:")
+say(paste(capture.output(print(rs |> group_by(scale_lab) |>
+  summarise(n = n(), median_adj = round(median(rrr), 3), median_unadj = round(median(rrr_unadj), 3),
+            ratio_median = round(median(ratio), 3), ratio_q25 = round(quantile(ratio, .25), 3),
+            ratio_q75 = round(quantile(ratio, .75), 3), above1_adj = round(mean(lo > 1), 3),
+            above1_unadj = round(mean(lo_unadj > 1), 3), .groups = "drop"), width = 200)), collapse = "\n"))
+say(paste(capture.output(print(table(adjusted = rs$sig, unadjusted = rs$sig_unadj))), collapse = "\n"))
+p13 <- ggplot(rs, aes(rrr_unadj, rrr)) +
+  geom_abline(color = INK2, linewidth = 0.4, linetype = "22") +
+  geom_hline(yintercept = 1, color = GRID) + geom_vline(xintercept = 1, color = GRID) +
+  geom_point(aes(color = scale_lab), size = 1.3, alpha = 0.6) +
+  facet_wrap(~ scale_lab, nrow = 1) +
+  scale_x_log10() + scale_y_log10() +
+  scale_color_manual(values = S_COL, guide = "none") +
+  labs(x = "RRR, adjusted for age, sex, site (sensitivity)", y = "RRR, also adjusted for race/ethnicity (primary)",
+       title = "Adjusting for race/ethnicity moves the poverty estimate up, not down",
+       subtitle = sprintf("Every universe (k 2-6, n = %d), highest vs lowest class. Dashed line: no change.", nrow(rs)))
+save(p13, "fig13_race_sensitivity", 10, 4.2)
 
 say("\nFigures written to ", figd)

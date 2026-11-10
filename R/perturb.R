@@ -1,5 +1,5 @@
 # =============================================================================
-# R/perturb.R: data for the stability analyses (see STABILITY_PLAN.md).
+# R/perturb.R: data for the stability analyses (see docs/STABILITY_PLAN.md).
 # Anchor data, subsample / site-split / noise / null generators, settings
 # variants, and the per-replicate data builder. Sourced by 07, 08 and 09.
 #
