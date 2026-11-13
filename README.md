@@ -312,3 +312,4 @@ Figures (`13_cbma_summary.R`): cbma1 weights, cbma2 class trajectories, cbma3 un
 - rgl is built from source with `--disable-opengl` because this Mac has no XQuartz.
 - latrend's GBTM wrapper ignores gridsearch initialisation. GBTM is therefore fitted through `lcMethodLcmmGMM(random = ~ -1)`, the same model, so it gets the same 20-start gridsearch.
 - Exact versions: `output/logs/package_versions.txt`; session info: `output/logs/sessionInfo_<mode>.txt`.
+- `renv.lock` (2026-11-12, R 4.6.1, 160 packages) records every package the scripts use at the installed versions, matching `package_versions.txt`. The project is not renv-activated; the scripts use the normal library. To rebuild elsewhere: `renv::restore(lockfile = "renv.lock")`, then `00_install.R` for kml, longitudinalData, clv (archived from CRAN, patched) and rgl (built without OpenGL).
