@@ -66,7 +66,7 @@ for (kk in 2:6) subsets[[paste0("k = ", kk)]] <- filter(ok, k == kk)
 for (m in METHODS) subsets[[paste("Method:", M_LAB[[m]])]] <- filter(ok, method == m)
 subsets[["Family: one per family"]] <- filter(ok, family == "one")
 subsets[["Family: full sample"]] <- filter(ok, family == "full")
-grp <- c(rep("Overall", 6), rep("Scale", 3), rep("k", 5), rep("Method", 7), rep("Family", 2))
+grp <- c(rep("Overall", 6), rep("Scale", 3), rep("k", 5), rep("Method", length(METHODS)), rep("Family", 2))
 rob <- bind_rows(lapply(names(subsets), \(n) { d <- subsets[[n]]
   tibble(subset = n, n = nrow(d), med = median(d$rrr), q1 = quantile(d$rrr, .25), q3 = quantile(d$rrr, .75),
          above = mean(d$sig == "CI above 1"), below = mean(d$sig == "CI below 1")) })) |>

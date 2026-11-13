@@ -17,19 +17,26 @@ setopt err_exit
 ARC=output/archive/pre_link_2026-11-13
 stamp() { echo "$(date '+%m-%d %H:%M')  $*"; }
 
+# Resume after a failed step with FROM=<script>, e.g. FROM=11_refit_figures.R: the archive
+# step and the Phase 1 scripts before it are skipped (the archive must not be overwritten).
+FROM=${FROM:-}
 [[ $(ls output/universes/full/gbtm_link_*.rds | wc -l) -eq 12 ]] || { echo "gbtm_link fits missing"; exit 1; }
-mkdir -p $ARC/cbma $ARC/stability
-cp -Rp output/results output/summaries output/figures $ARC/
-cp -p output/stability/spec_reps.rds output/stability/base_assign.rds output/stability/null_model.rds $ARC/stability/
-for f in raw_ch raw_sdbw raw_equal raw_avg raw_kbal all_equal; do
-  [[ -f output/cbma/$f.rds ]] && mv output/cbma/$f.rds $ARC/cbma/
-done
-cp -p output/universes/full/gbtm_link_*.rds output/universes/full_refit/
-stamp "archived; gbtm_link copied into full_refit"
+if [[ -z $FROM ]]; then
+  [[ ! -e $ARC ]] || { echo "$ARC exists; set FROM to resume"; exit 1; }
+  mkdir -p $ARC/cbma $ARC/stability
+  cp -Rp output/results output/summaries output/figures $ARC/
+  cp -p output/stability/spec_reps.rds output/stability/base_assign.rds output/stability/null_model.rds $ARC/stability/
+  for f in raw_ch raw_sdbw raw_equal raw_avg raw_kbal all_equal; do
+    [[ -f output/cbma/$f.rds ]] && mv output/cbma/$f.rds $ARC/cbma/
+  done
+  cp -p output/universes/full/gbtm_link_*.rds output/universes/full_refit/
+  stamp "archived; gbtm_link copied into full_refit"
+fi
 
 # ---- Phase 1 -------------------------------------------------------------------------------
 for s in "04_poverty.R full_refit" "05_agreement.R full_refit" "06_figures.R full_refit" \
          "11_refit_figures.R" "15_class_gradient.R" "16_sens_site_re.R 8" "07_stability_spec.R full"; do
+  if [[ -n $FROM ]]; then [[ ${s%% *} == $FROM ]] && FROM= || continue; fi
   Rscript --vanilla ${=s} > output/logs/link_${${s%% *}%.R}.log 2>&1
   stamp "$s done"
 done
