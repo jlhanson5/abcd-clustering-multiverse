@@ -10,7 +10,7 @@
 # refitted (the clustering does not use income).
 # Every permutation reruns the primary poverty model (race-adjusted multinomial,
 # highest vs lowest, sandwich SEs for full-sample universes as in 04_poverty.R) in the
-# 652 main universes with an estimable RRR. Statistics per curve: median RRR, share of
+# main universes with an estimable RRR (652 before the skew-aware GBTM was added on 2026-11-13). Statistics per curve: median RRR, share of
 # universes with the CI above 1, Stouffer's Z (sum z / sqrt(n)). p = share of
 # permutations at least as extreme as observed, counting the observed: (b + 1) / (B + 1).
 # Output: output/permutation/perm_<id>.rds; output/results/permutation.rds;
@@ -63,14 +63,19 @@ top_one <- function(uid, K, w) {
   term <- paste0(K, ":income_halving")
   c(cf[as.character(K), "income_halving"], sqrt(V[term, term]))
 }
+# A saved permutation is topped up with any universes it lacks (e.g. the skew-aware GBTM
+# universes added 2026-11-13): the permuted income depends only on b, and each universe
+# is fitted on its own, so this equals refitting the permutation from scratch.
 run_perm <- function(b, cores) {
   fn <- file.path(PDIR, sprintf("perm_%04d.rds", b))
-  if (file.exists(fn)) return(invisible(NULL))
+  old <- if (file.exists(fn)) readRDS(fn) else NULL
+  todo <- if (is.null(old)) univ else filter(univ, !universe_id %in% old$universe_id)
+  if (!nrow(todo)) return(invisible(NULL))
   w <- wide; w$income_halving <- perm_income(b)
   w <- select(w, src_subject_id, income_halving, age_bl, sex, site, race, family)
-  r <- mclapply(seq_len(nrow(univ)), \(i) top_one(univ$universe_id[i], univ$K[i], w), mc.cores = cores)
+  r <- mclapply(seq_len(nrow(todo)), \(i) top_one(todo$universe_id[i], todo$K[i], w), mc.cores = cores)
   m <- do.call(rbind, r)
-  out <- tibble(universe_id = univ$universe_id, est = m[, 1], se = m[, 2])
+  out <- bind_rows(old, tibble(universe_id = todo$universe_id, est = m[, 1], se = m[, 2]))
   saveRDS(out, paste0(fn, ".tmp")); file.rename(paste0(fn, ".tmp"), fn)
 }
 curve_stats <- function(d) {
@@ -83,7 +88,8 @@ curve_stats <- function(d) {
 if (length(args) >= 1 && args[1] == "summary") {
   files <- list.files(PDIR, "^perm_\\d{4}\\.rds$", full.names = TRUE)
   ids <- as.integer(sub("perm_(\\d{4})\\.rds", "\\1", basename(files)))
-  st <- bind_rows(lapply(seq_along(files), \(i) mutate(curve_stats(readRDS(files[i])), perm = ids[i], .before = 1)))
+  st <- bind_rows(lapply(seq_along(files), \(i) mutate(curve_stats(filter(readRDS(files[i]), universe_id %in% univ$universe_id)),
+                                                       perm = ids[i], .before = 1)))
   obs <- filter(st, perm == 0); null <- filter(st, perm > 0); B <- nrow(null)
   p <- c(median_rrr = (sum(null$median_rrr >= obs$median_rrr) + 1) / (B + 1),
          share_above = (sum(null$share_above >= obs$share_above) + 1) / (B + 1),

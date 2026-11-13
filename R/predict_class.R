@@ -33,7 +33,7 @@ predict_new <- function(method, res, d_train, d_new, args = list()) {
     pam = { C <- res$model; rownames(C) <- seq_len(nrow(C))
             nearest(d_new$X, C, if (is.null(args$metric)) "euclidean" else args$metric) },
     llpa = as.integer(predict(res$model, newdata = d_new$X)$classification),
-    gbtm = , gmm = unname(predict_lcmm(res$model, d_new$long)[d_new$ids]),
+    gbtm = , gmm = , gbtm_link = unname(predict_lcmm(res$model, d_new$long)[d_new$ids]),
     stop("no predict for ", method))
 }
 
@@ -45,10 +45,11 @@ predict_new <- function(method, res, d_train, d_new, args = list()) {
 # - latrend builds the hlme call with do.call, so call[[1]] is the function object;
 #   lcmm::predictClass needs a name there.
 # - hlme needs a numeric subject, so ids are mapped to integers and back.
-# Also takes an hlme object directly (fit_gmm_conv in R/fit_task.R).
+# Also takes an hlme object directly (fit_gmm_conv in R/fit_task.R), or an lcmm object
+# (fit_gbtm_link, the skew-aware GBTM; added 2026-11-13).
 predict_lcmm <- function(m, newdata) {
-  hl <- if (inherits(m, "hlme")) m else m@model
-  hl$call[[1]] <- as.name("hlme")
+  hl <- if (inherits(m, c("hlme", "lcmm"))) m else m@model
+  hl$call[[1]] <- as.name(if (inherits(hl, "lcmm")) "lcmm" else "hlme")
   key <- unique(newdata$id)
   nd <- newdata; nd$id <- match(nd$id, key)
   pc <- lcmm::predictClass(hl, newdata = nd, subject = "id")

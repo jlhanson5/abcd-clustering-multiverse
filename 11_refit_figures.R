@@ -25,9 +25,9 @@ figd <- fig_dir(mode)
 sumf <- file.path(SUMM, paste0("summary_", mode, "_extra.txt")); unlink(sumf)
 say  <- function(...) { cat(..., "\n"); cat(..., "\n", file = sumf, append = TRUE) }
 
-METHODS <- c("kmeans", "pam", "ward", "llpa", "kml", "gbtm", "gmm")
+METHODS <- c("kmeans", "pam", "ward", "llpa", "kml", "gbtm", "gmm", "gbtm_link")
 M_LAB <- c(kmeans = "k-means", pam = "PAM", ward = "Ward", llpa = "Gaussian mixture",
-           kml = "kml", gbtm = "GBTM", gmm = "GMM")
+           kml = "kml", gbtm = "GBTM", gmm = "GMM", gbtm_link = "GBTM (link)")
 S_LAB <- c(raw = "Raw", t = "T-score", log = "log(1+raw)")
 # Reference palette (dataviz skill): categorical slots 1-3 for the three scales;
 # CI status as in 06_figures.R; ordinal blue ramp steps 250-650 for k / class order.
@@ -136,7 +136,7 @@ save(p10, "fig10_top_class", 8, 5.5)
 wide <- readRDS(file.path(DER, "wide.rds"))
 R <- wide |> select(src_subject_id, all_of(paste0("imp_r_", WAVES)))
 anc <- res$fits |> filter(family == "one", config == "ge3_imp", k == 3,
-                          time == ifelse(method %in% c("gbtm", "gmm"), "age", "wave"))
+                          time == ifelse(method %in% c("gbtm", "gmm", "gbtm_link"), "age", "wave"))
 tr <- bind_rows(lapply(seq_len(nrow(anc)), function(i) {
   a <- res$assign[[anc$universe_id[i]]]; if (is.null(a)) return(NULL)
   inner_join(a, R, by = "src_subject_id") |>

@@ -23,9 +23,9 @@ sumf <- file.path(SUMM, "summary_class_gradient.txt"); unlink(sumf)
 say  <- function(...) { cat(..., "\n"); cat(..., "\n", file = sumf, append = TRUE) }
 pt   <- function(x) paste(capture.output(print(x, n = 200, width = 200)), collapse = "\n")
 
-METHODS <- c("kmeans", "pam", "ward", "llpa", "kml", "gbtm", "gmm")
+METHODS <- c("kmeans", "pam", "ward", "llpa", "kml", "gbtm", "gmm", "gbtm_link")
 M_LAB <- c(kmeans = "k-means", pam = "PAM", ward = "Ward", llpa = "Gaussian mixture",
-           kml = "kml", gbtm = "GBTM", gmm = "GMM")
+           kml = "kml", gbtm = "GBTM", gmm = "GMM", gbtm_link = "GBTM (link)")
 S_LAB <- c(raw = "Raw", t = "T-score", log = "log(1+raw)", all = "All scales")
 W_LAB <- c(ch = "Calinski-Harabasz", sdbw = "S_Dbw", equal = "Equal", avg = "Averaged", kbal = "k-balanced")
 SHAPE <- c("Rises steadily", "Rises, not steadily", "Middle class below lowest", "Middle class below lowest (CI)")

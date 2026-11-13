@@ -53,11 +53,11 @@ res <- readRDS(file.path(RES, "results_full_refit.rds"))
 wide <- readRDS(file.path(DER, "wide.rds"))
 anchor <- res$fits |>
   filter(family == "one", config == "ge3_imp", scale %in% scales, k %in% 2:6,
-         time == ifelse(method %in% c("gbtm", "gmm"), "age", "wave")) |>
+         time == ifelse(method %in% c("gbtm", "gmm", "gbtm_link"), "age", "wave")) |>
   mutate(keep = is.na(error) & !degenerate &
            !(method == "gmm" & k >= 5) & !(method == "gmm" & scale == "raw" & k == 4))
 inputs <- filter(anchor, keep) |>
-  arrange(match(scale, c("raw", "t", "log")), match(method, c("kmeans", "pam", "ward", "llpa", "kml", "gbtm", "gmm")), k)
+  arrange(match(scale, c("raw", "t", "log")), match(method, c("kmeans", "pam", "ward", "llpa", "kml", "gbtm", "gmm", "gbtm_link")), k)
 
 ids <- sort(res$assign[[inputs$universe_id[1]]]$src_subject_id)
 if (smoke) { set.seed(SEED); ids <- sort(sample(ids, n_sub)) }

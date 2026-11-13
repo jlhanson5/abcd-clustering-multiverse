@@ -25,9 +25,9 @@ S    <- readRDS(file.path(SOUT, "summary.rds"))
 figd <- fig_dir(if (mode == "smoke") "stability_smoke" else "stability")
 dir.create(figd, recursive = TRUE, showWarnings = FALSE)
 
-METHODS <- c("kmeans", "pam", "ward", "llpa", "kml", "gbtm", "gmm")
+METHODS <- c("kmeans", "pam", "ward", "llpa", "kml", "gbtm", "gmm", "gbtm_link")
 M_LAB <- c(kmeans = "k-means", pam = "PAM", ward = "Ward", llpa = "Gaussian mixture",
-           kml = "kml", gbtm = "GBTM", gmm = "GMM")
+           kml = "kml", gbtm = "GBTM", gmm = "GMM", gbtm_link = "GBTM (link)")
 A_LAB <- c(raw = "Raw CBCL", log = "log(1+raw)")
 P_LAB <- c(seed = "Seeds / starts", subsample = "80% subsamples", site = "Site split-half",
            noise90 = "Noise, r = .90", noise80 = "Noise, r = .80")

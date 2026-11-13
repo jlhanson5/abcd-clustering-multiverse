@@ -10,7 +10,7 @@
 
 STAB_ANCHORS <- c("raw", "log")
 CHEAP <- c("kmeans", "pam", "ward", "llpa", "kml")
-TRAJ  <- c("gbtm", "gmm")
+TRAJ  <- c("gbtm", "gmm", "gbtm_link")   # gbtm_link (2026-11-13): raw anchor only (07)
 # Seed-dependent methods. Ward is deterministic. The Gaussian mixture is too at
 # n <= 2,000, but at the anchor n mclust initialises on a random 2,000-child
 # subset (see fit_llpa), so it gets seed replicates.

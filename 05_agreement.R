@@ -15,7 +15,7 @@ res  <- readRDS(file.path(RES, paste0("results_", mode, ".rds")))
 
 keep <- res$fits |>
   filter(is.na(error), !degenerate | is.na(degenerate)) |>
-  arrange(match(method, c("kmeans", "pam", "ward", "llpa", "kml", "gbtm", "gmm")),
+  arrange(match(method, c("kmeans", "pam", "ward", "llpa", "kml", "gbtm", "gmm", "gbtm_link")),
           k, scale, time, family, config)
 uids <- keep$universe_id
 ids  <- sort(unique(unlist(lapply(res$assign[uids], `[[`, "src_subject_id"))))

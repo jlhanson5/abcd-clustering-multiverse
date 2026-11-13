@@ -23,9 +23,9 @@ sumf <- file.path(SUMM, if (smoke) "summary_cbma_smoke.txt" else "summary_cbma.t
 say <- function(...) { cat(..., "\n"); cat(..., "\n", file = sumf, append = TRUE) }
 pt <- function(x) paste(capture.output(print(x, n = 200, width = 200)), collapse = "\n")
 
-METHODS <- c("kmeans", "pam", "ward", "llpa", "kml", "gbtm", "gmm")
+METHODS <- c("kmeans", "pam", "ward", "llpa", "kml", "gbtm", "gmm", "gbtm_link")
 M_LAB <- c(kmeans = "k-means", pam = "PAM", ward = "Ward", llpa = "Gaussian mixture",
-           kml = "kml", gbtm = "GBTM", gmm = "GMM")
+           kml = "kml", gbtm = "GBTM", gmm = "GMM", gbtm_link = "GBTM (link)")
 S_LAB <- c(raw = "Raw", t = "T-score", log = "log(1+raw)", all = "All scales")
 W_LAB <- c(ch = "Calinski-Harabasz", sdbw = "S_Dbw", equal = "Equal", avg = "Averaged", kbal = "k-balanced")
 ORD <- c("#a6c8f0", "#5b9be6", "#2563b8", "#0d3266", "#08203f", "#04101f")  # light to dark; wide steps so 4 classes read apart

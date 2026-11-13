@@ -17,7 +17,7 @@
 source("00_setup.R")
 
 VECTOR <- c("kmeans", "pam", "ward", "llpa", "kml")
-TRAJ   <- c("gbtm", "gmm")
+TRAJ   <- c("gbtm", "gmm")        # gbtm_link: see lnk below
 K_MAIN <- 2:6
 K_SUPP <- 7:8            # supplement: the cheap methods only
 
@@ -26,7 +26,13 @@ vec <- expand_grid(method = VECTOR, scale = c("raw", "t", "log"), time = "wave",
 trj <- expand_grid(method = TRAJ, scale = c("raw", "t", "log"), time = c("wave", "age"),
                    family = c("one", "full"), config = c("ge3_imp", "ge3_native", "all4"))
 
-tasks <- bind_rows(vec, trj) |>
+# Skew-aware GBTM (lcmm with an estimated link; added 2026-11-13): raw scores only, since
+# the link estimates the transformation. Appended after the original tasks so their
+# task indices, and with them their seeds (R/fit_task.R), do not change.
+lnk <- expand_grid(method = "gbtm_link", scale = "raw", time = c("wave", "age"),
+                   family = c("one", "full"), config = c("ge3_imp", "ge3_native", "all4"))
+
+tasks <- bind_rows(vec, trj, lnk) |>
   mutate(ks = map(method, \(m) if (m %in% VECTOR) c(K_MAIN, K_SUPP) else K_MAIN),
          task_id = paste(method, scale, time, family, config, sep = "_"))
 

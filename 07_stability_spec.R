@@ -36,6 +36,7 @@ reps_for <- function(ptype, method) {
   r <- REPS[REPS$ptype == ptype, ]
   n <- if (method %in% TRAJ) r$traj else r$cheap
   if (ptype == "seed" && !method %in% STOCH) n <- 0
+  if (ptype == "starts" && method == "gbtm_link") n <- 0   # start recording is hlme only
   if (smoke) n <- min(n, 2)
   if (n == 0) integer(0) else seq_len(n)
 }
@@ -44,7 +45,12 @@ grid <- expand_grid(anchor = STAB_ANCHORS, method = c(TRAJ, CHEAP),
                     ptype = setdiff(REPS$ptype, "setting")) |>
   mutate(rep = map2(ptype, method, reps_for)) |>
   unnest_longer(rep) |>
-  mutate(variant = "base")
+  mutate(variant = "base") |>
+  # Skew-aware GBTM (added 2026-11-13): raw anchor only (the link estimates the
+  # transformation, so a log anchor adds nothing), 3 starts per fit (R/lcmm_link_stability.R
+  # found the same solution from every converged start at k = 2-5).
+  filter(!(method == "gbtm_link" & anchor != "raw")) |>
+  mutate(args = map(method, \(m) if (m == "gbtm_link") list(n_starts = 3) else NULL))
 
 settings <- VARIANTS |>
   expand_grid(anchor = STAB_ANCHORS) |>
@@ -57,13 +63,14 @@ reps <- bind_rows(grid, settings) |>
   mutate(args = map(args, \(a) if (is.null(a)) list() else a),
          fit_seed = map2_int(ptype, rep, fit_seed),
          rep_id = sprintf("%s_%s_%s_%s_r%03d", anchor, method, ptype, variant, rep)) |>
-  arrange(match(method, c("gmm", "gbtm", "kml", "pam", "llpa", "kmeans", "ward")), ptype, rep, anchor)
+  arrange(match(method, c("gmm", "gbtm_link", "gbtm", "kml", "pam", "llpa", "kmeans", "ward")), ptype, rep, anchor)
 stopifnot(!anyDuplicated(reps$rep_id))
 
 # ---- Base solutions from the main run ----------------------------------------------
 # The anchor universes: one per family, ge3_imp, age metric for GBTM/GMM.
 res <- readRDS(file.path(RES, if (smoke) "results_full.rds" else "results_full_refit.rds"))   # primary run since 2026-11-07
 uid <- expand_grid(anchor = STAB_ANCHORS, method = c(TRAJ, CHEAP), k = K_STAB) |>
+  filter(!(method == "gbtm_link" & anchor != "raw")) |>
   mutate(universe_id = sprintf("%s_%s_%s_one_ge3_imp_k%d", method, anchor,
                                ifelse(method %in% TRAJ, "age", "wave"), k))
 base_assign <- lapply(uid$universe_id, function(u) {

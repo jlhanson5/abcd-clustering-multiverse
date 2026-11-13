@@ -228,6 +228,41 @@ fit_gmm_conv <- function(d, k, seed, n_starts = 10, shape = "quadratic", ri_only
        n_conv = length(okc), at_best = if (length(okc)) sum(ll[okc] > ll[b] - 0.5) else 0L)
 }
 
+# ---- Skew-aware GBTM (added 2026-11-13) ------------------------------------------------
+# lcmm::lcmm with an estimated link function ("5-quant-splines"): the observed score is a
+# monotone transformation of a latent Gaussian outcome, so the model estimates the
+# transformation instead of assuming raw, T or log scores. No random effects (GBTM);
+# class-specific quadratic in time. Starts as in fit_gmm_conv: n_starts random starts of
+# 10 iterations from random(minit), each run to convergence, best converged kept. Tested
+# in R/lcmm_link_pilot.R and R/lcmm_link_stability.R. Fitted on raw scores only (spec).
+fit_gbtm_link <- function(d, k, seed, n_starts = 5) {
+  key <- d$ids
+  dl <- d$long; dl$id <- match(dl$id, key)
+  set.seed(seed)
+  base <- list(fixed = y ~ time + I(time^2), random = ~ -1, subject = "id", data = dl,
+               link = "5-quant-splines", verbose = FALSE)
+  minit <- do.call(lcmm::lcmm, base)
+  if (minit$conv != 1) stop("1-class initial model did not converge")
+  assign(".lcmm_minit", minit, envir = globalenv())
+  on.exit(rm(".lcmm_minit", envir = globalenv()), add = TRUE)
+  runs <- lapply(seq_len(n_starts), function(s) tryCatch({
+    short <- do.call(lcmm::lcmm, c(base, list(mixture = ~ time + I(time^2), ng = k, maxiter = 10,
+                                             B = quote(random(.lcmm_minit)))))
+    m <- do.call(lcmm::lcmm, c(base, list(mixture = ~ time + I(time^2), ng = k, B = short$best)))
+    list(m = m, ll = m$loglik, conv = m$conv)
+  }, error = function(e) list(m = NULL, ll = NA_real_, conv = NA_real_)))
+  ll <- vapply(runs, `[[`, numeric(1), "ll"); conv <- vapply(runs, `[[`, numeric(1), "conv")
+  ll[!is.finite(ll) | ll < -1e8] <- NA
+  okc <- which(conv %in% 1)
+  if (!length(okc) && all(is.na(ll))) stop("no start produced a fit")
+  b <- if (length(okc)) okc[which.max(ll[okc])] else which.max(ll)
+  m <- runs[[b]]$m
+  p <- m$pprob
+  list(cls = as.integer(p$class[match(seq_along(key), p$id)]), bic = m$BIC, aic = m$AIC,
+       entropy = rel_entropy(as.matrix(p[, -(1:2)])), converged = m$conv == 1, model = m,
+       n_conv = length(okc), at_best = if (length(okc)) sum(ll[okc] > ll[b] - 0.5) else 0L)
+}
+
 # ---- One task ----------------------------------------------------------------------
 fit_task <- function(task, wide, long_obs, pilot) {
   d <- task_data(task, wide, long_obs, pilot)
@@ -248,7 +283,8 @@ fit_task <- function(task, wide, long_obs, pilot) {
                       bic = res$bic, aic = res$aic, entropy = res$entropy,
                       asw = asw(d$X, res$cls, seed),
                       k_found = sum(props > 0), min_prop = min(props),
-                      small_class = min(props) < CLASS_FLOOR),
+                      small_class = min(props) < CLASS_FLOOR,
+                      n_conv = res$n_conv %||% NA_integer_, at_best = res$at_best %||% NA_integer_),
          assign = tibble(src_subject_id = d$ids, class = res$cls))
   })
 }

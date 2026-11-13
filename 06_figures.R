@@ -26,9 +26,9 @@ figd <- fig_dir(mode)
 sumf <- file.path(SUMM, paste0("summary_", mode, ".txt")); unlink(sumf)
 say  <- function(...) { cat(..., "\n"); cat(..., "\n", file = sumf, append = TRUE) }
 
-METHODS <- c("kmeans", "pam", "ward", "llpa", "kml", "gbtm", "gmm")
+METHODS <- c("kmeans", "pam", "ward", "llpa", "kml", "gbtm", "gmm", "gbtm_link")
 M_LAB <- c(kmeans = "k-means", pam = "PAM", ward = "Ward", llpa = "Gaussian mixture",
-           kml = "kml", gbtm = "GBTM", gmm = "GMM")
+           kml = "kml", gbtm = "GBTM", gmm = "GMM", gbtm_link = "GBTM (link)")
 BLUE <- "#2a78d6"; GRAY <- "#9a9893"; INK <- "#0b0b0b"; INK2 <- "#52514e"
 SEQ  <- c("#e8f1fb", "#b5d2f2", "#7fb0e8", "#4a8ddc", "#2a78d6", "#1a5aa8", "#0f3d75")
 
