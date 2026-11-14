@@ -16,7 +16,7 @@ income. Universes whose highest class has fewer than 10 children have no RRR (no
 | fig1_spec_curve | RRR in every universe (k 2-6), sorted, with the analytic choices below | **Main result** |
 | fig2_agreement_methods | Mean ARI between methods, same data and k | Main |
 | fig3_agreement_full | ARI between every pair of universes | Supplement |
-| fig4_alluvial | The same children across 7 methods, one configuration, k = 4 | Main |
+| fig4_alluvial | The same children across 8 methods, one configuration, k = 4 | Main |
 | fig5_k_selection | k chosen by BIC and silhouette; k-max 5 vs 6 | Supplement |
 | fig6_diagnostics | Fit failures, empty classes, smallest class | Supplement |
 | fig7_decision_importance | Share of variance in log RRR explained by each choice | Main |

@@ -11,8 +11,8 @@
 # (Forbes et al., 2023); no ABCD data goes into that repository.
 #
 # Inputs: the primary run's (full_refit) solutions for the anchor configuration
-# (one child per family, >= 3 waves, imputed; n = 8,331): all 7 methods at k = 2-6,
-# GBTM/GMM on the age metric. Left out: fits with an error or an empty class, GMM
+# (one child per family, >= 3 waves, imputed; n = 8,331): all 8 methods at k = 2-6
+# (GBTM (link), added 2026-11-13, on raw only), GBTM/GMM on the age metric. Left out: fits with an error or an empty class, GMM
 # k = 5-6 and raw GMM k = 4 (not reliably estimated; README "GMM refit"). Inputs are
 # hard (one-hot): only modal classes were saved. K_BMA = 6, the largest input k.
 # The index is computed on the scale's wave matrix (raw, T-score or log1p(raw)),

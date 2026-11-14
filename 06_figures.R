@@ -6,7 +6,7 @@
 #                            income), every universe, sorted; decision grid below
 #   fig2_agreement_methods   mean ARI between methods, matched on data config and k
 #   fig3_agreement_full      ARI between every pair of universes
-#   fig4_alluvial            same children, 7 methods, one data config at k = 4
+#   fig4_alluvial            same children, 8 methods, one data config at k = 4
 #   fig5_k_selection         k chosen by BIC / silhouette, with k-max 5 vs 6
 #   fig6_diagnostics         failures, empty classes, smallest class (5% line)
 #   fig7_decision_importance share of variance in log RRR explained by each fork
