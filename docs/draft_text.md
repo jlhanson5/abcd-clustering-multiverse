@@ -1,6 +1,6 @@
 # Draft text for the write-up (2026-11-12)
 
-Drafts for Jamie to edit. Numbers are from the README (primary run `full_refit`, 652 universes).
+Drafts for Jamie to edit. Numbers are from the README. The first two sections use the primary run before GBTM (link) was added (652 universes); the limitations section uses the current one (712 universes, 2026-11-14).
 
 ## Methods: adjustment for race and ethnicity
 
@@ -13,3 +13,11 @@ Adjustment increased rather than reduced the association. The median relative ri
 ## Discussion: caveat on the shape of the gradient
 
 Our primary contrast compares the highest-symptom class with the lowest-symptom class. On raw scores this contrast summarises a gradient that rises steadily across classes in most universes (74%). On T-scores and log-transformed scores it does not: the lowest class is a group of children near the floor of the scale (median 21% of children with a mean raw CBCL total of 3.9 on T-scores; 12% with 2.2 on the log scale), and their families were on average poorer than those of children in mildly symptomatic middle classes. A middle class was significantly less likely to be poor than the lowest class in 56% of T-score and 75% of log-scale universes, more often at larger k. The highest-versus-lowest estimate is therefore not a simple dose-response on these scales, and its size depends on who ends up in the reference class. We report the full gradient (Supplementary Figures g1-g3) and do not interpret the U-shape substantively; it may reflect how floor effects and transformation define the lowest class rather than a protective effect of mild symptoms.
+
+## Discussion: limitations (classes or continuous variation)
+
+Our trajectory classes summarise how symptoms are distributed. They are not evidence that children fall into discrete subgroups, and three results point that way. First, a growth mixture model that estimated both a transformation of the CBCL scale and each child's own intercept and slope found little for classes to explain: BIC was 237,245 with one class and 237,078 with four, and the three- and four-class models converged from none of 10 random starts. That one-class model also fit better than the best class model without random effects (BIC 238,004 at k = 6). Second, data simulated from a single growth model with no subgroups also produced classes, and on raw scores they split off a small "severe" group with higher silhouettes than the real data. Third, the classes depend on measurement noise. The skew-aware GBTM was stable across subsamples (median ARI .95-.98 at k = 2-5) but much less stable when we added noise at a reliability of .90 (ARI .74 at k = 2 and .48 at k = 5, against .85 and .76 for GBTM on the untransformed scores), because the estimated transformation shifts with the noise.
+
+None of this weakens the poverty finding, which does not need the classes to be real. The highest-symptom class was poorer than the lowest in 93% of 712 universes, the median RRR was above 1 for every one of the eight methods (1.17-1.26), and no permutation of income came close to the observed pattern (p = .002, the smallest possible with 500 permutations). What the classes cannot support is a typology. We do not read class membership as a kind of child, and we treat the number of classes as a choice of resolution. The next test is a model that keeps symptoms continuous, with income predicting each child's intercept and slope; if it reproduces the gradient, the classes are a way of presenting the result rather than part of the claim.
+
+*Notes for Jamie:* the GMM-with-link and skew-aware GBTM numbers are from the anchor configuration only (one child per family, >= 3 waves, imputed, N = 8,331); say so in the methods or supplement. The continuous-model follow-up is a suggestion, not something we have run. If you would rather not name a next analysis, end the paragraph at "a choice of resolution".
