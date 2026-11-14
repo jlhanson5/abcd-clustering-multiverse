@@ -69,3 +69,12 @@ Jamie chose to refit the 36 GMM tasks at k = 2-4, 50 converged starts each, keep
 - Integration (2026-11-13/14, `R/run_link_integration.sh`; pre-link results in `output/archive/pre_link_2026-11-13/`): 12 tasks, 60 universes, no errors. Primary run now 712 universes: median RRR 1.22, CI above 1 in 93% (661); gbtm_link alone 1.26. Stability: subsample ARI .98/.96/.95/.96/.87, site prediction strength .89/.86/.76/.71/.42, but noise-90 ARI only .74/.61/.52/.48/.42 (plain GBTM .85-.73). Raw clusterBMA: 37 inputs, gbtm_link 13% of the weight, consensus ARI .93-.98 with the pre-link fits, RRRs within 0.01. Permutation p = 0.002 on all three statistics. Population weights and site random effect unchanged.
 - The rerun clusterBMA fits used R's reference BLAS (libRblas.0.dylib; 200-230 min per fit) where the earlier ones used vecLib (about 85 min). T-score and log fits were not rerun.
 - 11_refit_figures.R had 7 methods hard-coded in Fig 8; fixed to `length(METHODS)`.
+
+## 2026-11-14: growth-curve k-means (GCKM) pilot
+
+Jamie asked which other methods to consider (latrend). With 4 waves, only GCKM (`lcMethodGCKM`: lmer random intercept and slope, then k-means on each child's standardised coefficients) adds a different family; DTW, functional, ZIP/count GBTM, anchored k-medoids, NPRM and MixAK were judged redundant, unsuited to 4 waves or too slow. Pilot `R/gckm_pilot.R` (latrend defaults written out, 20 k-means starts; linear and quadratic random effects; raw and log anchors; full data, 20 subsamples, 5 nulls), summary `output/summaries/summary_gckm_pilot.txt`. Runs in about a minute on 4 cores.
+- Linear (latrend default): median pairwise subsample ARI raw .99/.98/.97/.97/.94, log .87/.97/.96/.77/.88 at k 2-6; passes the proposed clusterBMA rule (>= .75 at every k on both anchors), narrowly at log k = 5. Quadratic is less stable (raw k = 6 .74).
+- Not redundant: ARI with k-means, kml, PAM and GBTM base solutions .26-.57. Standardising gives the slope as much weight as the level, so GCKM groups children by change as well as severity. Unstandardised coefficients would be dominated by the intercept and close to k-means.
+- Null data: on raw the smallest null class shrinks to 0.1-1% at k 3-6 (real 3.6-13%); on log the null classes are as balanced as the real ones (GCKM partitions a continuous cloud either way). Null pairwise ARI is 0 and uninformative (independent null datasets).
+- Not yet tested: site split-half (needs coefficient prediction for held-out children), poverty RRR.
+- Open: whether to add it (Jamie to decide).
