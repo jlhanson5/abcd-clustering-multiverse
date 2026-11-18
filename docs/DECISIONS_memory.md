@@ -96,3 +96,16 @@ Decided (Jamie, 2026-11-15). Replaces the all-methods input set, which becomes a
 - **Degenerate fits:** GBTM raw, all children, ends up with empty classes at k = 7 (5 classes found) and k = 8 (7 found). Every other fit (log, t, one per family) is non-degenerate, smallest class 1.2-5.5%. 12_cbma.R leaves degenerate fits out (they are listed in `left_out`), which would give raw 54 inputs and the pooled run 166. Going ahead on that basis (left out, as both projects already handle degenerate fits; raw 54 inputs, pooled 166): asked Jamie 2026-11-18, no answer yet, revisit if they want otherwise. The rule's "estimable at every k" is met by the one-per-family fits on all scales.
 - **Stability at k = 7-8:** 08_stability_run.R takes a `k=7|8` filter key (methods kmeans, kml, pam and gbtm only; same REPS design and replicate seeds as k = 2-6) and writes to output/stability/reps_k78/ (log stability_full_k78.log), so the k = 2-6 replicates are untouched. Subsample replicates run first. R/cbma_rule_k28.R checks the .75 rule at k = 2-8 (k = 2-6 from summary.rds, k = 7-8 from reps_k78), and `09_stability_summary.R full <cores> k78` summarises the full k = 7-8 set (summary_k78.rds).
 - **clusterBMA:** 12_cbma.R takes `CBMA_SET` = rule (default; output/cbma, K_BMA = 8) or allmethods (output/cbma_allmethods, the old set, K_BMA = 6). R/run_cbma_k28.sh runs the 13 fits two at a time, then 12b, 13, 14 and 15. 04_poverty.R takes POV_CORES (default 8).
+
+## 2026-11-18: main and supplement figures
+Decided by Jamie on 2026-11-18 ("Yes, log both", relayed by the main session). There are six main figures:
+1. fig1_spec_curve
+2. fig7_decision_importance
+3. fig10_top_class
+4. stab1_heatmap and stab3_null as one figure
+5. cbma2_trajectories and cbma5_poverty as one figure
+6. g1_gradient_lines
+
+Every other figure goes in the supplement. That includes fig13_race_sensitivity, the 7_sensitivity figures s1-s3 (the permutation statistic is also reported in the text), single-vs-consensus x1-x7 and the diagnostics. The two combined figures are drawn at the redraw after the k = 2-8 clusterBMA fits. docs/FIGURES.md has a Role column to match.
+- Zenodo stays "at submission": Jamie links Zenodo to GitHub, then a release is tagged. Nothing to do before then.
+- Jamie also confirmed (in the cognition project) that the rule set is primary and the all-methods set is the sensitivity analysis. The .75 rule is applied as written, with no readmitting of near misses.
