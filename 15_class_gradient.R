@@ -11,7 +11,7 @@
 #                       against class mean raw CBCL; scale x k
 #   g2_gradient_shape   share of universes (k 3-6) whose gradient rises monotonically,
 #                       rises with a dip, or dips below the lowest class; scale x method
-#   g3_consensus_gradient  every class of the 16 clusterBMA consensus fits, 95% CI
+#   g3_consensus_gradient  every class of every clusterBMA consensus fit, 95% CI
 # Table: output/summaries/summary_class_gradient.txt
 # =============================================================================
 
@@ -133,7 +133,7 @@ g3d <- bind_rows(select(cp, scale, weighting, class, class_mean, n, rrr, lo, hi)
 say("\nclusterBMA consensus fits, every class vs the lowest (race-adjusted):")
 say(pt(g3d |> transmute(scale_lab, weighting, class, pct = round(pct), class_mean = round(class_mean, 1),
                         rrr = round(rrr, 2), ci = ifelse(class == "1", "ref", sprintf("%.2f-%.2f", lo, hi)))))
-ORD <- c("#a6c8f0", "#5b9be6", "#2563b8", "#0d3266", "#08203f", "#04101f")
+ORD <- c("#a6c8f0", "#5b9be6", "#2563b8", "#0d3266", "#08203f", "#04101f", "#020810", "#000000")   # up to K_BMA = 8
 p3 <- ggplot(g3d, aes(class_mean, rrr)) +
   geom_hline(yintercept = 1, color = INK2, linewidth = 0.3) +
   geom_line(aes(group = weighting), color = GRID, linewidth = 0.6) +

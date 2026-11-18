@@ -28,7 +28,8 @@ M_LAB <- c(kmeans = "k-means", pam = "PAM", ward = "Ward", llpa = "Gaussian mixt
            kml = "kml", gbtm = "GBTM", gmm = "GMM", gbtm_link = "GBTM (link)")
 S_LAB <- c(raw = "Raw", t = "T-score", log = "log(1+raw)", all = "All scales")
 W_LAB <- c(ch = "Calinski-Harabasz", sdbw = "S_Dbw", equal = "Equal", avg = "Averaged", kbal = "k-balanced")
-ORD <- c("#a6c8f0", "#5b9be6", "#2563b8", "#0d3266", "#08203f", "#04101f")  # light to dark; wide steps so 4 classes read apart
+ORD <- c("#a6c8f0", "#5b9be6", "#2563b8", "#0d3266", "#08203f", "#04101f", "#020810", "#000000")  # light to dark; wide steps so 4 classes read apart (K_BMA up to 8)
+K_COL <- c("#d3e3f7", "#b9d4f3", "#78acec", "#3987e5", "#1f5fae", "#0d3266", "#061a36")   # k = 2-8
 INK <- "#0b0b0b"; INK2 <- "#52514e"; GRID <- "#ecebe8"
 theme_set(theme_minimal(base_size = 10) +
   theme(panel.grid.minor = element_blank(), panel.grid.major = element_line(color = GRID, linewidth = 0.3),
@@ -74,22 +75,27 @@ say("\nOverview. eff_inputs = 1 / sum(w^2), the number of equally weighted input
 say(pt(ov))
 
 # ---- Weights by method -----------------------------------------------------------------------
-wt <- bind_rows(lapply(runs, \(r) bind_cols(lab(r), r$inputs))) |> mutate(method = factor(method, METHODS))
+# Inputs: one row per method x family setting (k-means = one per family; "(all)" = all children).
+F_LAB <- c(one = "", full = " (all)")
+wt <- bind_rows(lapply(runs, \(r) bind_cols(lab(r), r$inputs, if (is.null(r$inputs$family)) tibble(family = "one")))) |>
+  mutate(method = factor(method, METHODS),
+         input = paste0(M_LAB[as.character(method)], F_LAB[family]))
+wt$input <- factor(wt$input, unique(wt$input[order(wt$method, wt$family != "one")]))
 say("\nTotal weight by method:")
-say(pt(wt |> group_by(scale, weighting, method) |> summarise(w = round(sum(weight), 3), .groups = "drop") |>
-         pivot_wider(names_from = method, values_from = w, values_fill = 0)))
+say(pt(wt |> group_by(scale, weighting, input) |> summarise(w = round(sum(weight), 3), .groups = "drop") |>
+         pivot_wider(names_from = input, values_from = w, values_fill = 0)))
 w_dark <- 0.6 * max(wt$weight)   # white text on the darker tiles
-p1 <- ggplot(wt, aes(factor(k), method, fill = weight)) +
+p1 <- ggplot(wt, aes(factor(k), input, fill = weight)) +
   geom_tile(color = "white", linewidth = 0.8) +
   geom_text(aes(label = sprintf("%.3f", weight), color = weight > w_dark), size = 2.2) +
   scale_color_manual(values = c(`TRUE` = "white", `FALSE` = INK), guide = "none") +
   scale_fill_gradientn(colors = c("#e8f1fb", "#86b6ef", "#3987e5", "#184f95"), name = "Weight") +
-  scale_y_discrete(labels = M_LAB, limits = rev) +
+  scale_y_discrete(limits = rev) +
   facet_grid(scale ~ weighting) +
   labs(x = "k", y = NULL, title = "How much each input counts in the consensus",
        subtitle = "Normalised weights (sum to 1 within each panel). Blank cells: inputs left out.") +
   theme(panel.grid = element_blank())
-save(p1, "cbma1_weights", 11, 9)
+save(p1, "cbma1_weights", 13, 10)
 
 # ---- Consensus trajectories ---------------------------------------------------------------------
 wide <- readRDS(file.path(DER, "wide.rds"))
@@ -107,7 +113,8 @@ p2 <- ggplot(tr, aes(wave, cbcl, group = class, color = class)) +
   scale_color_manual(values = ORD, name = "Consensus class (1 = lowest)") +
   scale_x_discrete(expand = expansion(add = c(0.3, 0.9))) +
   labs(x = "Wave", y = "Mean raw CBCL total", title = "Consensus classes across methods and k",
-       subtitle = "clusterBMA, K_BMA = 6; clusters nobody is allocated to drop out. Labels: class size.") +
+       subtitle = sprintf("clusterBMA, K_BMA = %d; clusters nobody is allocated to drop out. Labels: class size.",
+                          runs[[1]]$settings$K_BMA)) +
   theme(legend.position = "top", legend.justification = "left")
 save(p2, "cbma2_trajectories", 10, 8)
 
@@ -123,13 +130,13 @@ save(p3, "cbma3_uncertainty", 10, 7)
 
 # ---- Agreement of inputs with the consensus -------------------------------------------------------
 say("\nARI of each input with its consensus, mean by method:")
-say(pt(wt |> group_by(scale, weighting, method) |> summarise(ari = round(mean(ari), 2), .groups = "drop") |>
-         pivot_wider(names_from = method, values_from = ari)))
-p4 <- ggplot(wt, aes(ari, method, color = factor(k))) +
+say(pt(wt |> group_by(scale, weighting, input) |> summarise(ari = round(mean(ari), 2), .groups = "drop") |>
+         pivot_wider(names_from = input, values_from = ari)))
+p4 <- ggplot(wt, aes(ari, input, color = factor(k))) +
   geom_point(size = 1.6, alpha = 0.85) +
   facet_grid(scale ~ weighting) +
-  scale_color_manual(values = c("#b9d4f3", "#78acec", "#3987e5", "#1f5fae", "#0d3266"), name = "k") +
-  scale_y_discrete(labels = M_LAB, limits = rev) +
+  scale_color_manual(values = setNames(K_COL, 2:8), name = "k") +
+  scale_y_discrete(limits = rev) +
   labs(x = "ARI with the consensus classes", y = NULL, title = "Which inputs does the consensus resemble?") +
   theme(legend.position = "top", legend.justification = "left")
 save(p4, "cbma4_agreement", 10, 7)

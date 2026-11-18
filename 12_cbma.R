@@ -7,6 +7,15 @@
 #                and equal weights; needs those three runs first) | kbal (each k
 #                gets 1/5 of the weight, split equally among that k's inputs)
 #     n_sub, n_iter  smoke tests only: a random subsample of children, fewer steps
+#   Input set: environment variable CBMA_SET (default rule).
+#     rule (primary since 2026-11-15, docs/DECISIONS_memory.md): the four methods that pass
+#       the stability rule (median pairwise subsample ARI >= .75 at every k, raw and log
+#       anchors; R/cbma_rule_k28.R): k-means, kml, PAM, GBTM (age time, quadratic), k = 2-8,
+#       each method's one-per-family fit and its all-children fit (siblings included), both
+#       ge3_imp, scored on the 8,331 anchor children: 56 inputs per scale, 168 pooled.
+#       K_BMA = 8. Output output/cbma/.
+#     allmethods (the 2026-11-08 set, now the sensitivity analysis): described below.
+#       K_BMA = 6. Output output/cbma_allmethods/.
 # Decided 2026-11-07. Uses the native R port, ../clusterBMA_port/R/cbma.R
 # (Forbes et al., 2023); no ABCD data goes into that repository.
 #
@@ -45,21 +54,35 @@ stopifnot(scale %in% c("raw", "t", "log", "all"), weighting %in% c("ch", "sdbw",
           scale != "all" || weighting %in% c("equal", "kbal"))
 scales <- if (scale == "all") c("raw", "t", "log") else scale
 smoke <- !is.na(n_sub)
-dest <- file.path(OUT, if (smoke) "cbma_smoke" else "cbma")
+SET <- Sys.getenv("CBMA_SET", "rule")
+stopifnot(SET %in% c("rule", "allmethods"))
+dest <- file.path(OUT, if (smoke) "cbma_smoke" else if (SET == "rule") "cbma" else "cbma_allmethods")
 dir.create(dest, showWarnings = FALSE, recursive = TRUE)
-K_BMA <- 6
+K_BMA <- if (SET == "rule") 8 else 6
+RULE_METHODS <- c("kmeans", "kml", "pam", "gbtm")
 
 res <- readRDS(file.path(RES, "results_full_refit.rds"))
 wide <- readRDS(file.path(DER, "wide.rds"))
-anchor <- res$fits |>
-  filter(family == "one", config == "ge3_imp", scale %in% scales, k %in% 2:6,
-         time == ifelse(method %in% c("gbtm", "gmm", "gbtm_link"), "age", "wave")) |>
-  mutate(keep = is.na(error) & !degenerate &
-           !(method == "gmm" & k >= 5) & !(method == "gmm" & scale == "raw" & k == 4))
+anchor <- if (SET == "rule") {
+  res$fits |>
+    filter(family %in% c("one", "full"), config == "ge3_imp", scale %in% scales, k %in% 2:8,
+           method %in% RULE_METHODS, time == ifelse(method == "gbtm", "age", "wave")) |>
+    mutate(keep = is.na(error) & !degenerate)
+} else {
+  res$fits |>
+    filter(family == "one", config == "ge3_imp", scale %in% scales, k %in% 2:6,
+           time == ifelse(method %in% c("gbtm", "gmm", "gbtm_link"), "age", "wave")) |>
+    mutate(keep = is.na(error) & !degenerate &
+             !(method == "gmm" & k >= 5) & !(method == "gmm" & scale == "raw" & k == 4))
+}
+if (SET == "rule") stopifnot(nrow(anchor) == 56 * length(scales))   # 4 methods x 7 k x 2 family settings
 inputs <- filter(anchor, keep) |>
-  arrange(match(scale, c("raw", "t", "log")), match(method, c("kmeans", "pam", "ward", "llpa", "kml", "gbtm", "gmm", "gbtm_link")), k)
+  arrange(match(scale, c("raw", "t", "log")), match(method, c("kmeans", "pam", "ward", "llpa", "kml", "gbtm", "gmm", "gbtm_link")),
+          match(family, c("one", "full")), k)
 
-ids <- sort(res$assign[[inputs$universe_id[1]]]$src_subject_id)
+# Children: the anchor (one per family) solution's; all-children inputs are scored on them.
+ids <- sort(res$assign[[inputs$universe_id[inputs$family == "one"][1]]]$src_subject_id)
+if (!smoke) stopifnot(length(ids) == 8331)
 if (smoke) { set.seed(SEED); ids <- sort(sample(ids, n_sub)) }
 w <- wide[match(ids, wide$src_subject_id), ]
 raw <- as.matrix(w[paste0("imp_r_", WAVES)])
@@ -121,14 +144,14 @@ pov <- tryCatch({
          top_n = sum(labels == K), top_mean = mean(rowMeans(raw)[labels == K]))
 }, error = function(e) tibble(K = K, error = conditionMessage(e)))
 
-agree <- inputs |> select(universe_id, input_scale = scale, method, k) |>
+agree <- inputs |> select(universe_id, input_scale = scale, method, family, k) |>
   mutate(index_value = values, weight = weights,
          ari = vapply(A_list, \(A) adjustedRandIndex(max.col(A, ties.method = "first"), labels), 0))
 port_git <- tryCatch(system2("git", c("-C", PORT, "describe", "--always", "--dirty"), stdout = TRUE),
                      error = function(e) NA_character_)
 
-out <- list(scale = scale, weighting = weighting, index = if (weighting %in% c("equal", "avg", "kbal")) NA else index,
-            n = length(ids), ids = ids, inputs = agree, left_out = filter(anchor, !keep) |> select(universe_id, method, k),
+out <- list(set = SET, scale = scale, weighting = weighting, index = if (weighting %in% c("equal", "avg", "kbal")) NA else index,
+            n = length(ids), ids = ids, inputs = agree, left_out = filter(anchor, !keep) |> select(universe_id, method, family, k),
             alloc = alloc, labels = labels, uncertainty = uncert,
             sizes = tabulate(labels, K), empty_clusters = length(f$empty_clusters),
             objective_trace = f$objective_trace, poverty = pov,

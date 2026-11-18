@@ -1,6 +1,9 @@
 # =============================================================================
 # 09_stability_summary.R: stability metrics from the replicates in 08.
-#   Rscript 09_stability_summary.R full|smoke [cores]
+#   Rscript 09_stability_summary.R full|smoke [cores] [k78]
+# k78 (added 2026-11-18): summarise the k = 7-8 replicates in reps_k78/ (08 with k=7|8)
+# against the primary run's k = 7-8 anchor solutions, into summary_k78.rds and
+# summary_stability_<mode>_k78.txt. The k = 2-6 outputs are not touched.
 # Output: output/stability/summary.rds (tables below) and
 #         output/summaries/summary_stability_<mode>.txt
 #   fits      fit indices, one row per replicate x k x part
@@ -31,19 +34,35 @@ suppressPackageStartupMessages({ library(nnet); library(parallel) })
 args  <- commandArgs(trailingOnly = TRUE)
 mode  <- if (length(args) >= 1) args[1] else "full"
 cores <- if (length(args) >= 2) as.integer(args[2]) else 8
+k78   <- length(args) >= 3 && args[3] == "k78"
 SOUT  <- file.path(OUT, if (mode == "smoke") "stability_smoke" else "stability")
-sumf  <- file.path(SUMM, paste0("summary_stability_", mode, ".txt")); unlink(sumf)
+sfx   <- if (k78) "_k78" else ""
+sumf  <- file.path(SUMM, paste0("summary_stability_", mode, sfx, ".txt")); unlink(sumf)
 say   <- function(...) { cat(..., "\n"); cat(..., "\n", file = sumf, append = TRUE) }
 t_all <- Sys.time()
 
 base <- readRDS(file.path(SOUT, "anchor.rds"))
 nm   <- readRDS(file.path(SOUT, "null_model.rds"))
 ba   <- readRDS(file.path(SOUT, "base_assign.rds"))
+if (k78) {   # the primary run's k = 7-8 anchor solutions, built as in 07_stability_spec.R
+  res <- readRDS(file.path(RES, "results_full_refit.rds"))
+  uid <- expand_grid(anchor = STAB_ANCHORS, method = c("kmeans", "kml", "pam", "gbtm"), k = 7:8) |>
+    mutate(universe_id = sprintf("%s_%s_%s_one_ge3_imp_k%d", method, anchor,
+                                 ifelse(method %in% TRAJ, "age", "wave"), k))
+  ba <- list(universes = uid, assign = setNames(lapply(uid$universe_id, function(u) {
+    a <- res$assign[[u]]
+    if (is.null(a)) return(NULL)
+    a <- a[a$src_subject_id %in% base$ids, ]
+    list(idx = match(a$src_subject_id, base$ids), cls = as.integer(a$class))
+  }), uid$universe_id))
+  rm(res); invisible(gc())
+  stopifnot(!any(vapply(ba$assign, is.null, logical(1))))
+}
 N    <- length(base$ids)
 REAL <- c("seed", "subsample", "noise90", "noise80", "site")
 
 # ---- Load replicates -----------------------------------------------------------------
-files <- list.files(file.path(SOUT, "reps"), pattern = "\\.rds$", full.names = TRUE)
+files <- list.files(file.path(SOUT, if (k78) "reps_k78" else "reps"), pattern = "\\.rds$", full.names = TRUE)
 recs  <- mclapply(files, readRDS, mc.cores = cores)
 meta  <- bind_rows(lapply(recs, \(r) select(r$rep, rep_id, anchor, method, ptype, variant, rep)))
 fits  <- bind_rows(lapply(recs, \(r) bind_rows(lapply(r$fits, `[[`, "fit")))) |>
@@ -265,7 +284,7 @@ rm(res); invisible(gc())
 saveRDS(list(fits = fits, pairs = pairs, site = site, child = child, child_hist = child_hist,
              jaccard = jaccard, profiles = profiles, ksel = ksel, poverty = poverty, poverty_unadj = poverty_unadj,
              starts = starts, settings = settings, base = basefits, meta = meta),
-        file.path(SOUT, "summary.rds"))
+        file.path(SOUT, paste0("summary", sfx, ".rds")))
 
 # ---- Text summary -----------------------------------------------------------------------------------------
 pt <- function(x) paste(capture.output(print(x, n = 200, width = 200)), collapse = "\n")

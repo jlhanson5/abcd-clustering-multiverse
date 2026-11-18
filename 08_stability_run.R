@@ -4,6 +4,11 @@
 # filters: comma-separated key=value, keys anchor, method, ptype, maxrep. E.g.
 #   Rscript 08_stability_run.R full 8 anchor=raw,maxrep=1    # timing pass
 #   Rscript 08_stability_run.R full 8 method=gmm,ptype=site
+# Key k (e.g. k=7|8; added 2026-11-18 for the k = 2-8 clusterBMA inputs): fit those k
+# instead of K_STAB, with the same replicate table, data and fit seeds, into reps_k78/
+# (same rep_id), for the four clusterBMA rule methods only (kmeans, kml, pam, gbtm,
+# settings variants included). The k = 2-6 replicates in reps/ are not touched.
+#   Rscript 08_stability_run.R full 4 "k=7|8,ptype=subsample"
 # Replicates whose .rds already exists are skipped, so the run can be restarted;
 # each one is saved under a temp name and renamed (same pattern as 03_run.R).
 #
@@ -33,14 +38,21 @@ SOUT <- file.path(OUT, if (mode == "smoke") "stability_smoke" else "stability")
 reps <- readRDS(file.path(SOUT, "spec_reps.rds"))
 base <- readRDS(file.path(SOUT, "anchor.rds"))
 nm   <- readRDS(file.path(SOUT, "null_model.rds"))
+KS <- NULL
 for (f in filt) {
+  if (f[1] == "k") { KS <- as.integer(strsplit(f[2], "\\|")[[1]]); next }
   reps <- if (f[1] == "maxrep") filter(reps, rep <= as.integer(f[2]))
           else filter(reps, .data[[f[1]]] %in% strsplit(f[2], "\\|")[[1]])
 }
+if (!is.null(KS)) {
+  stopifnot(all(KS > max(K_STAB)))
+  reps <- filter(reps, method %in% c("kmeans", "kml", "pam", "gbtm"))
+}
+K_FIT <- if (is.null(KS)) K_STAB else KS
 
-dest <- file.path(SOUT, "reps")
+dest <- file.path(SOUT, if (is.null(KS)) "reps" else paste0("reps_k", paste(KS, collapse = "")))
 dir.create(dest, recursive = TRUE, showWarnings = FALSE)
-logf <- file.path(LOGS, paste0("stability_", mode, ".log"))
+logf <- file.path(LOGS, paste0("stability_", mode, if (!is.null(KS)) paste0("_k", paste(KS, collapse = "")), ".log"))
 
 # ---- One replicate ----------------------------------------------------------------
 fit_rep <- function(rep) {
@@ -54,7 +66,7 @@ fit_rep <- function(rep) {
     function(d, k, seed) lcmm_record(d, k, seed, gmm = rep$method == "gmm", n_converge = N_CONVERGE)
   } else get(paste0("fit_", rep$method))
 
-  lapply(K_STAB, function(k) {
+  lapply(K_FIT, function(k) {
     res <- list(); fit <- list(); out <- list()
     for (h in names(ds)) {
       t0 <- Sys.time()

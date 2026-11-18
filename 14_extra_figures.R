@@ -1,7 +1,8 @@
 # =============================================================================
 # 14_extra_figures.R: figures that put the single-method solutions (full_refit,
-# anchor configuration: wave, one per family, >=3 waves imputed, k 2-6) next to
-# the clusterBMA consensus fits (12_cbma.R).
+# anchor configuration: >=3 waves imputed; since 2026-11-18 the rule input set, k-means,
+# kml, PAM and GBTM at k 2-8, one per family and all children, scored on the 8,331
+# anchor children) next to the clusterBMA consensus fits (12_cbma.R).
 #   Rscript 14_extra_figures.R
 # Figures in output/figures/5_single_vs_consensus/:
 #   x1_rrr_inputs_vs_consensus  poverty RRR of every input solution and every consensus fit
@@ -10,7 +11,7 @@
 #   x4_child_uncertainty        per-child consensus uncertainty against the child's mean CBCL
 #   x5_class_gradient           RRR of every class vs the lowest, against class mean CBCL
 #   x6_highest_share            share of input solutions that put each child in the highest class
-#   x7_consensus_agreement      ARI between all 16 consensus fits, across scales
+#   x7_consensus_agreement      ARI between all consensus fits, across scales
 # Table: output/summaries/summary_extra_figures.txt
 # =============================================================================
 
@@ -29,8 +30,8 @@ S_LAB <- c(raw = "Raw", t = "T-score", log = "log(1+raw)", all = "All scales")
 W_LAB <- c(ch = "Calinski-Harabasz", sdbw = "S_Dbw", equal = "Equal", avg = "Averaged", kbal = "k-balanced")
 # Palette as in 11_refit_figures.R / 13_cbma_summary.R
 SIG_COL <- c("CI above 1" = "#2a78d6", "CI includes 1" = "#9a9893", "CI below 1" = "#e34948")
-ORD <- c("#a6c8f0", "#5b9be6", "#2563b8", "#0d3266", "#08203f", "#04101f")   # class / k order, light to dark
-K_COL <- c("#b9d4f3", "#78acec", "#3987e5", "#1f5fae", "#0d3266")
+ORD <- c("#a6c8f0", "#5b9be6", "#2563b8", "#0d3266", "#08203f", "#04101f", "#020810", "#000000")   # class order, light to dark
+K_COL <- setNames(c("#d3e3f7", "#b9d4f3", "#78acec", "#3987e5", "#1f5fae", "#0d3266", "#061a36"), 2:8)   # k = 2-8
 INK <- "#0b0b0b"; INK2 <- "#52514e"; GRID <- "#ecebe8"; GRAY <- "#b8b6b0"
 theme_set(theme_minimal(base_size = 10) +
   theme(panel.grid.minor = element_blank(), panel.grid.major = element_line(color = GRID, linewidth = 0.3),
@@ -56,9 +57,9 @@ lab <- function(r) tibble(scale = factor(S_LAB[r$scale], S_LAB), weighting = fac
 ids <- runs[[1]]$ids
 stopifnot(all(vapply(runs, \(r) identical(r$ids, ids), logical(1))))
 
-# Input solutions: the 32 per scale used by clusterBMA (the "all" run pools them)
+# Input solutions: the ones per scale used by clusterBMA (56 in the rule set; the "all" run pools them)
 inp <- bind_rows(lapply(runs[vapply(runs, \(r) r$scale != "all", logical(1))], \(r) r$inputs)) |>
-  distinct(universe_id, input_scale, method, k) |>
+  distinct(universe_id, input_scale, method, family, k) |>
   left_join(select(res$fits, universe_id, rrr, lo, hi, top_n), by = "universe_id") |>
   mutate(scale = factor(S_LAB[input_scale], S_LAB), method = factor(method, METHODS))
 say(sprintf("Extra figures (%s): %d input solutions, %d consensus fits, n = %d.",
@@ -113,7 +114,7 @@ p1 <- ggplot(d1, aes(rrr, row)) +
   scale_x_log10() +
   labs(x = "Poverty RRR per halving of income, highest vs lowest class (log scale)", y = NULL,
        title = "Single-method solutions and the consensus",
-       subtitle = "Dots: the inputs clusterBMA combines (full_refit, anchor configuration). Diamonds: the five consensus weightings.\nDotted line: the pooled all-scales consensus (equal weights). Adjusted for age, sex, site and race/ethnicity.") +
+       subtitle = "Dots: the inputs clusterBMA combines (full_refit, one per family and all children). Diamonds: the consensus weightings.\nDotted line: the pooled all-scales consensus (equal weights). Adjusted for age, sex, site and race/ethnicity.") +
   theme(legend.position = "top", legend.justification = "left")
 save(p1, "x1_rrr_inputs_vs_consensus", 8, 9)
 
@@ -137,14 +138,14 @@ p2 <- ggplot(mapping = aes(share, mean)) +
   scale_x_log10(labels = scales::percent) +
   labs(x = "Class size (share of children, log scale)", y = "Class mean raw CBCL (BL-Y3)",
        title = "What the \"highest\" class is on each scale",
-       subtitle = "Every class of every input solution (k 2-6). Diamonds: consensus classes (dark = highest), all weightings including the pooled run.") +
+       subtitle = "Every class of every input solution (k 2-8). Diamonds: consensus classes (dark = highest), all weightings including the pooled run.") +
   theme(legend.position = "top", legend.justification = "left")
 save(p2, "x2_class_map", 10, 4.5)
 
 # ---- x3: crosswalk, consensus (equal) vs each method's k = 3 ------------------------------------------
 d3 <- bind_rows(lapply(names(runs)[vapply(runs, \(r) r$weighting == "equal" && r$scale != "all", logical(1))], function(nm) {
   r <- runs[[nm]]
-  js <- which(inp$input_scale == r$scale & inp$k == 3)
+  js <- which(inp$input_scale == r$scale & inp$k == 3 & inp$family == "one")
   bind_rows(lapply(js, \(j) as_tibble(as.data.frame(table(consensus = r$labels, method_class = L[, j]))) |>
     group_by(consensus) |> mutate(p = Freq / sum(Freq)) |> ungroup() |>
     mutate(scale = factor(S_LAB[r$scale], S_LAB), method = factor(M_LAB[as.character(inp$method[j])], M_LAB))))
@@ -229,7 +230,7 @@ p7 <- ggplot(d7, aes(a, b, fill = ari)) +
   scale_fill_gradientn(colors = c("#f4f8fd", "#86b6ef", "#3987e5", "#184f95"), limits = c(0, 1), name = "ARI") +
   scale_y_discrete(limits = rev) +
   labs(x = NULL, y = NULL, title = "Do the consensus fits agree across scales?",
-       subtitle = "ARI between the class assignments of all 16 clusterBMA fits.") +
+       subtitle = sprintf("ARI between the class assignments of all %d clusterBMA fits.", length(runs))) +
   theme(panel.grid = element_blank(), axis.text.x = element_text(angle = 50, hjust = 1))
 save(p7, "x7_consensus_agreement", 9, 8)
 

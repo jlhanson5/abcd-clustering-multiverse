@@ -19,7 +19,7 @@ source("00_setup.R")
 VECTOR <- c("kmeans", "pam", "ward", "llpa", "kml")
 TRAJ   <- c("gbtm", "gmm")        # gbtm_link: see lnk below
 K_MAIN <- 2:6
-K_SUPP <- 7:8            # supplement: the cheap methods only
+K_SUPP <- 7:8            # supplement: the cheap methods, and anchor-config GBTM (below)
 
 vec <- expand_grid(method = VECTOR, scale = c("raw", "t", "log"), time = "wave",
                    family = c("one", "full"), config = c("ge3_imp", "all4"))
@@ -32,8 +32,13 @@ trj <- expand_grid(method = TRAJ, scale = c("raw", "t", "log"), time = c("wave",
 lnk <- expand_grid(method = "gbtm_link", scale = "raw", time = c("wave", "age"),
                    family = c("one", "full"), config = c("ge3_imp", "ge3_native", "all4"))
 
+# GBTM k = 7-8 (added 2026-11-18): the clusterBMA input set uses k = 2-8 (decided
+# 2026-11-15), so the anchor-configuration GBTM tasks (age time, ge3_imp, every scale and
+# family setting) get supplement universes at k = 7-8 too (R/gbtm_k78.R).
+gbtm78 <- function(m, tm, cf) m == "gbtm" && tm == "age" && cf == "ge3_imp"
 tasks <- bind_rows(vec, trj, lnk) |>
-  mutate(ks = map(method, \(m) if (m %in% VECTOR) c(K_MAIN, K_SUPP) else K_MAIN),
+  mutate(ks = pmap(list(method, time, config), \(m, tm, cf)
+           if (m %in% VECTOR || gbtm78(m, tm, cf)) c(K_MAIN, K_SUPP) else K_MAIN),
          task_id = paste(method, scale, time, family, config, sep = "_"))
 
 universes <- tasks |>

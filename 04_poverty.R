@@ -27,7 +27,7 @@ source("00_setup.R")
 suppressPackageStartupMessages({ library(nnet); library(parallel) })
 
 mode  <- commandArgs(trailingOnly = TRUE)[1]; if (is.na(mode)) mode <- "pilot"
-cores <- 8
+cores <- as.integer(Sys.getenv("POV_CORES", "8"))
 
 wide <- readRDS(file.path(DER, "wide.rds")) |> add_race() |>
   mutate(income_halving = -log2(income),
