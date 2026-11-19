@@ -5,9 +5,11 @@
 #   CBMA_SET=four (sensitivity): plus PAM and GBTM, 56 per scale (raw 54), output/cbma_four/.
 # K_BMA = 8. Per scale: Calinski-Harabasz, S_Dbw, equal, then averaged (started only once
 # that scale's other three exist), plus the pooled all-scales run with equal weights.
-# At most two fits at a time (about 4-5 GB each on this 16 GB Mac). The second starts only
-# when memory_pressure reports >= MIN_FREE % free and the compressor is under MAX_COMP MB,
-# so other projects' jobs are counted. For the rule set, 12b_cbma_poverty.R,
+# At most two fits at a time (about 4-5 GB each on this 16 GB Mac), counting any 12_cbma.R
+# already running (a fit already running is not started again). The second starts only
+# when memory_pressure reports >= MIN_FREE % free and the compressor is under MAX_COMP MB
+# on 3 checks 5 minutes apart, so other projects' jobs are counted. SKIP="raw sdbw,log
+# avg" leaves fits out (here for a decision still open). For the rule set, 12b_cbma_poverty.R,
 # 13_cbma_summary.R, 14_extra_figures.R and 15_class_gradient.R run afterwards.
 # Run from the project folder: caffeinate -i zsh R/run_cbma_k28.sh
 # The 2026-11-08 all-methods fits were moved to output/cbma_allmethods/ and their summaries
@@ -17,7 +19,7 @@
 
 export CBMA_SET=${CBMA_SET:-rule}
 case $CBMA_SET in rule) D=output/cbma ;; four) D=output/cbma_four ;; *) echo "CBMA_SET rule or four"; exit 1 ;; esac
-MIN_FREE=${MIN_FREE:-45}; MAX_COMP=${MAX_COMP:-3000}
+MIN_FREE=${MIN_FREE:-50}; MAX_COMP=${MAX_COMP:-3000}
 RH=/Library/Frameworks/R.framework/Resources
 L=output/logs/cbma_$CBMA_SET; mkdir -p $L
 fit() {
@@ -36,30 +38,34 @@ headroom() {
   [[ $comp == *G ]] && comp=$(( ${comp%G} * 1024 ))
   (( free >= MIN_FREE && comp < MAX_COMP ))
 }
-pids=()
-echo "$(date '+%m-%d %H:%M')  start, set $CBMA_SET"
+running() { pgrep -f "file=12_cbma.R" | wc -l | tr -d ' '; }
+echo "$(date '+%m-%d %H:%M')  start, set $CBMA_SET${SKIP:+, skipping $SKIP}"
 for job in "raw ch" "t ch" "log ch" "raw sdbw" "t sdbw" "log sdbw" "raw equal" "t equal" "log equal" \
            "all equal" "raw avg" "t avg" "log avg"; do
   s=${job% *}; w=${job#* }
-  [[ -f $D/${s}_$w.rds ]] && { echo "skip $s $w"; continue; }
+  [[ -f $D/${s}_$w.rds ]] && { echo "skip $s $w (done)"; continue; }
+  [[ ",$SKIP," == *",$job,"* ]] && { echo "skip $s $w (SKIP)"; continue; }
+  pgrep -f "12_cbma.R --args $s $w" >/dev/null && { echo "skip $s $w (already running)"; continue; }
   if [[ $w == avg ]]; then
     until [[ -f $D/${s}_ch.rds && -f $D/${s}_sdbw.rds && -f $D/${s}_equal.rds ]]; do sleep 120; done
   fi
-  # Wait for a slot: none running, or one running and clear headroom.
+  # Wait for a slot: no fit running, or one running and headroom on 3 checks in a row.
+  ok=0
   while true; do
-    live=(); for p in $pids; do kill -0 $p 2>/dev/null && live+=$p; done; pids=($live); n=${#pids}
+    n=$(running)
     (( n == 0 )) && break
-    (( n == 1 )) && headroom && break
-    sleep 120
+    if (( n == 1 )) && headroom; then (( ++ok >= 3 )) && break; else ok=0; fi
+    sleep 300
   done
   echo "$(date '+%m-%d %H:%M')  launch $s $w"
   fit $s $w &
-  pids+=$!
   sleep 300   # let the new fit reach its working size before judging headroom again
 done
-wait
+while (( $(running) > 0 )); do sleep 300; done
 n=$(ls $D/*.rds 2>/dev/null | wc -l | tr -d ' ')
-[[ $n -eq 13 ]] || { echo "only $n of 13 fits; stopping before the summaries"; exit 1; }
+need=$(( 13 - $(echo ${SKIP//[^,]/} | wc -c) )); [[ -z $SKIP ]] && need=13
+[[ $n -ge $need ]] || { echo "only $n of $need fits; stopping before the summaries"; exit 1; }
+[[ -n $SKIP ]] && { echo "$(date '+%m-%d %H:%M')  fits done except $SKIP; summaries wait for those"; exit 0; }
 [[ $CBMA_SET == rule ]] || { echo "$(date '+%m-%d %H:%M')  all fits done"; exit 0; }
 Rscript --vanilla 12b_cbma_poverty.R > $L/cbma_poverty.log 2>&1 && echo "12b done" || exit 1
 Rscript --vanilla 13_cbma_summary.R > $L/cbma_summary.log 2>&1 && echo "13 done" || exit 1
