@@ -109,3 +109,23 @@ Decided by Jamie on 2026-11-18 ("Yes, log both", relayed by the main session). T
 Every other figure goes in the supplement. That includes fig13_race_sensitivity, the 7_sensitivity figures s1-s3 (the permutation statistic is also reported in the text), single-vs-consensus x1-x7 and the diagnostics. The two combined figures are drawn at the redraw after the k = 2-8 clusterBMA fits. docs/FIGURES.md has a Role column to match.
 - Zenodo stays "at submission": Jamie links Zenodo to GitHub, then a release is tagged. Nothing to do before then.
 - Jamie also confirmed (in the cognition project) that the rule set is primary and the all-methods set is the sensitivity analysis. The .75 rule is applied as written, with no readmitting of near misses.
+
+## 2026-11-18: .75 rule at k = 2-8, stopped before the clusterBMA fits
+R/cbma_rule_k28.R uses the k = 7-8 subsample replicates in output/stability/reps_k78/: 100 per cell for k-means, kml and PAM and 20 for GBTM, with the same design as k = 2-6. Output is in output/summaries/summary_cbma_rule_k28.txt.
+
+Median pairwise subsample ARI at k = 7 and k = 8 (log anchor, then raw):
+
+| Method | log k7 | log k8 | raw k7 | raw k8 | Result |
+|---|---|---|---|---|---|
+| k-means | .897 | .772 | .902 | .950 | Pass; lowest is log k8 .772 |
+| kml | .875 | .777 | .908 | .952 | Pass; lowest is log k8 .777 |
+| PAM | .571 | .653 | .600 | .659 | **Fail** at k = 7 and 8 on both anchors |
+| GBTM | **.632** | .898 | .938 | .901 | **Fail** at log k7 only |
+
+At k = 2-6, all four methods passed.
+
+The task said to stop and report to Jamie if any method failed, so the clusterBMA fits have not started. Jamie has already said the rule is applied as written, with no readmitting of near misses. Read that way, PAM and GBTM drop out and the set becomes k-means and kml, which is 28 inputs per scale. Another reading would cap k at the highest k where all four methods pass, which is k = 6. That choice is Jamie's.
+
+A first run of the check also counted the null-subsample replicates as subsamples. The file filter was fixed before the table above was produced.
+
+The other k = 7-8 replicates for k-means, kml and PAM are done (942). The GBTM replicates for the other perturbations (site, noise, null, starts) are on hold until Jamie decides.

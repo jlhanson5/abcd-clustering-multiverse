@@ -34,9 +34,9 @@ lo <- readRDS(file.path(SOUT, "summary.rds"))$pairs |>
   group_by(anchor, method, k) |>
   summarise(reps = n_distinct(c(i, j)), pairs = n(), median_ari = median(ari, na.rm = TRUE), .groups = "drop")
 
-files <- list.files(file.path(SOUT, "reps_k78"), "_subsample_base_r\\d+\\.rds$", full.names = TRUE)
+files <- list.files(file.path(SOUT, "reps_k78"), "^(raw|log)_[a-z]+_subsample_base_r\\d+\\.rds$", full.names = TRUE)
 sol <- bind_rows(lapply(files, function(f) {
-  r <- readRDS(f)
+  r <- readRDS(f); if (r$rep$ptype != "subsample") return(NULL)
   bind_rows(lapply(r$fits, \(o) if (length(o$parts$all))
     tibble(anchor = r$rep$anchor, method = r$rep$method, rep = r$rep$rep, k = o$fit$k[1],
            v = list(fullv(o$parts$all$idx, o$parts$all$cls)))))
