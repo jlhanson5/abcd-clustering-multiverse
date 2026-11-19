@@ -137,6 +137,25 @@ Decided by Jamie on 2026-11-18 (relayed by the main session; matches the cogniti
 - The 2026-11-08 all-methods fits (16 fits, K_BMA = 6) were moved to output/cbma_allmethods/. Their summaries, figures (4_clusterbma, 5_single_vs_consensus, 6_class_gradient) and cbma_poverty.rds were moved to output/archive/pre_k28_2026-11-18/. They are archived, not reported.
 - R/run_cbma_k28.sh runs the 13 fits for a set. It runs at most two at a time, and the second starts only with memory headroom (memory_pressure free >= 45% and compressor < 3 GB), because another project's targets job holds about 5.5 GB. For the primary set it then runs 12b, 13, 14 and 15. The primary fits started on 2026-11-18 at 22:30; the sensitivity fits follow.
 
-## 2026-11-19: S_Dbw undefined at k = 8 (open)
-For the primary set, clusterCrit's S_Dbw is NaN for all four raw k = 8 inputs (k-means and kml, one per family and all children). It is Inf for log k = 8 one per family (k-means and kml). The other inputs, including every t input, are finite (5.6-12.9 at k = 7-8). The raw S_Dbw fit failed at weighting (cbma_weights needs finite, positive values), and log would fail the same way. I have asked Jamie how to handle this. The main session recommends following the cognition project's precedent (poa at full n). That means no sdbw and no avg for raw and log, so avg is not redefined. t keeps all four weightings. Raw and log would then have 2 fits each (ch, equal). raw/log sdbw and raw/log avg are held (`SKIP` in R/run_cbma_k28.sh). The other nine fits continue.
-- Run notes: raw ch 423 min, t ch 304 min (K_BMA = 8). A second fit started on 2026-11-19 at 12:28 on a brief memory dip, with swap at 4.4 of 5 GB. It was stopped after 5 min. The runner now needs headroom on 3 checks 5 min apart, and counts any 12_cbma.R already running.
+## 2026-11-19: S_Dbw undefined at k = 8: no S_Dbw or averaged fit on raw and log
+Decided by Jamie on 2026-11-19 ("OK, let's do those", relayed by the main session). This follows the cognition project's precedent for poa at full n.
+
+clusterCrit's S_Dbw is undefined for some k = 8 inputs:
+
+| Set | Scale | Undefined inputs |
+|---|---|---|
+| Primary | raw | NaN for all four k = 8 inputs (k-means and kml, one per family and all children) |
+| Primary | log | Inf for k-means and kml one-per-family k = 8 |
+| Sensitivity (four methods) | raw | Same as the primary set, plus Inf for GBTM one-per-family k = 7 and k = 8 |
+| Sensitivity (four methods) | log | Same as the primary set, plus NaN for GBTM all-children k = 8 |
+
+All t inputs are finite in both sets. cbma_weights needs finite, positive values, so the raw S_Dbw fit failed at weighting.
+
+- **Design, both sets, 9 fits each:**
+  - Calinski-Harabasz and equal weights on raw, t and log.
+  - S_Dbw and averaged on t only.
+  - The pooled all-scales run with equal weights.
+- Raw and log have no S_Dbw fit and no averaged fit. The averaged fit is not redefined as the mean of CH and equal, since that would be a new rule.
+- R/cbma_set.R holds this design, read by 12b, 13, 14 and 15. The four fits that are not run are named in the summaries and figure subtitles. Any other missing fit stops the scripts. R/run_cbma_k28.sh runs the 9 fits.
+- The sensitivity set writes to output/cbma_four, results/cbma_poverty_four.rds, figures/4_clusterbma_four and 5_single_vs_consensus_four, and the summaries with a _four suffix.
+- Run notes: raw ch took 423 min and t ch 304 min (K_BMA = 8). On 2026-11-19 a second fit started twice on brief memory dips (12:28, then 12:47 with the Mac thrashing). Both were stopped within 20 min. Fits now run one at a time while another project's targets/crew job runs or swap is growing.

@@ -31,8 +31,8 @@ Rscript 11_refit_figures.R    # extra full_refit figures (fig8-13)
 Rscript R/gmm_stab_refit.R 8  # GMM stability replicates with converged starts, before 09
 Rscript R/gbtm_k78.R fit 3; Rscript R/gbtm_k78.R merge   # GBTM k = 7-8 for the clusterBMA set (then 02, 04 full_refit)
 Rscript 08_stability_run.R full 3 "k=7|8"; Rscript R/cbma_rule_k28.R   # stability at k = 7-8 (reps_k78/), .75 rule at k = 2-8
-zsh R/run_cbma_k28.sh   # primary clusterBMA: k-means + kml x k 2-8 x 2 family settings = 28 inputs per scale, K_BMA = 8 (12_cbma.R x 13; then 12b, 13, 14, 15)
-CBMA_SET=four zsh R/run_cbma_k28.sh   # sensitivity: + PAM and GBTM, 56 per scale (raw 54), output/cbma_four
+zsh R/run_cbma_k28.sh   # primary clusterBMA: k-means + kml x k 2-8 x 2 family settings = 28 inputs per scale, K_BMA = 8; 9 fits (no S_Dbw or averaged on raw and log; R/cbma_set.R), then 12b, 13, 14, 15
+CBMA_SET=four zsh R/run_cbma_k28.sh   # sensitivity: + PAM and GBTM, 56 per scale (raw 54), output/cbma_four; then 12b, 13, 14 (_four outputs)
 # archived: the 2026-11-08 all-methods set (R/run_cbma.sh + run_cbma_avg.sh, 16 fits, K_BMA = 6), in output/cbma_allmethods/
 Rscript 14_extra_figures.R    # single methods vs consensus (output/figures/5_single_vs_consensus)
 Rscript 15_class_gradient.R   # every class vs the lowest (output/figures/6_class_gradient)

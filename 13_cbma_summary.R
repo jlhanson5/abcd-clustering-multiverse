@@ -14,12 +14,13 @@
 # =============================================================================
 
 source("00_setup.R")
+source("R/cbma_set.R")   # CBMA_SET: rule (primary, default) or four
 suppressPackageStartupMessages({ library(patchwork); library(mclust) })
 
-dir <- commandArgs(trailingOnly = TRUE)[1]; if (is.na(dir)) dir <- file.path(OUT, "cbma")
+dir <- commandArgs(trailingOnly = TRUE)[1]; if (is.na(dir)) dir <- CBMA_DIR
 smoke <- grepl("smoke", dir)
-figd <- fig_dir(if (smoke) "cbma_smoke" else "cbma")
-sumf <- file.path(SUMM, if (smoke) "summary_cbma_smoke.txt" else "summary_cbma.txt"); unlink(sumf)
+figd <- fig_dir(if (smoke) "cbma_smoke" else paste0(FIG_DIR[["cbma"]], CBMA_SFX))
+sumf <- file.path(SUMM, if (smoke) "summary_cbma_smoke.txt" else paste0("summary_cbma", CBMA_SFX, ".txt")); unlink(sumf)
 say <- function(...) { cat(..., "\n"); cat(..., "\n", file = sumf, append = TRUE) }
 pt <- function(x) paste(capture.output(print(x, n = 200, width = 200)), collapse = "\n")
 
@@ -39,13 +40,13 @@ theme_set(theme_minimal(base_size = 10) +
         plot.background = element_rect(fill = "white", color = NA)))
 save <- function(p, name, w, h) ggsave(file.path(figd, paste0(name, ".png")), p, width = w, height = h, dpi = 300)
 
-files <- list.files(dir, "\\.rds$", full.names = TRUE)
+files <- if (smoke) list.files(dir, "\\.rds$", full.names = TRUE) else cbma_files()
 runs <- setNames(lapply(files, readRDS), sub("\\.rds$", "", basename(files)))
 lab <- function(r) tibble(scale = factor(S_LAB[r$scale], S_LAB), weighting = factor(W_LAB[r$weighting], W_LAB))
 # Poverty: race-adjusted (primary since 2026-11-09) and unadjusted, from 12b_cbma_poverty.R.
 # The smoke dir keeps the unadjusted model stored by 12_cbma.R.
 if (!smoke) {
-  cp <- readRDS(file.path(RES, "cbma_poverty.rds")) |> filter(top)
+  cp <- readRDS(file.path(RES, paste0("cbma_poverty", CBMA_SFX, ".rds"))) |> filter(top)
   top_of <- function(r, m) filter(cp, scale == r$scale, weighting == r$weighting, model == m) |>
     transmute(K, est, se, rrr, lo, hi, top_n = n, top_mean = class_mean)
   for (nm in names(runs)) {
@@ -54,8 +55,9 @@ if (!smoke) {
     stopifnot(nrow(runs[[nm]]$poverty) == 1, nrow(runs[[nm]]$poverty_unadj) == 1)
   }
 }
-say(sprintf("clusterBMA consensus fits (%s): %d runs. Port %s, %s.", format(Sys.time(), "%Y-%m-%d %H:%M"),
-            length(runs), runs[[1]]$port, runs[[1]]$blas))
+say(sprintf("clusterBMA consensus fits (%s), %s: %d runs. Port %s, %s.", format(Sys.time(), "%Y-%m-%d %H:%M"),
+            CBMA_SET_LAB, length(runs), runs[[1]]$port, runs[[1]]$blas))
+if (!smoke) say(cbma_not_run_note)
 
 # ---- Overview ----------------------------------------------------------------------------
 ov <- bind_rows(lapply(runs, function(r) bind_cols(lab(r), tibble(
@@ -168,7 +170,8 @@ p5 <- ggplot(pv, aes(rrr, weighting)) +
   labs(x = "Poverty RRR per halving of income, highest vs lowest consensus class (95% CI, log scale)", y = NULL,
        title = "Poverty gradient in every consensus fit",
        subtitle = paste("Filled: adjusted for age, sex, site and race/ethnicity, with 95% CI. Open: without race/ethnicity.",
-                        "Text: adjusted RRR, then the share of children in the highest and lowest classes.")) +
+                        "Text: adjusted RRR, then the share of children in the highest and lowest classes.",
+                        if (!smoke) paste0("\n", cbma_not_run_note) else "")) +
   theme(strip.text.y = element_text(angle = 0))
 save(p5, "cbma5_poverty", 9, 6.5)
 

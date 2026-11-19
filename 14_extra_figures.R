@@ -16,10 +16,11 @@
 # =============================================================================
 
 source("00_setup.R")
+source("R/cbma_set.R")   # CBMA_SET: rule (primary, default) or four
 suppressPackageStartupMessages({ library(nnet); library(mclust) })
 
-figd <- fig_dir("extra")
-sumf <- file.path(SUMM, "summary_extra_figures.txt"); unlink(sumf)
+figd <- fig_dir(paste0(FIG_DIR[["extra"]], CBMA_SFX))
+sumf <- file.path(SUMM, paste0("summary_extra_figures", CBMA_SFX, ".txt")); unlink(sumf)
 say <- function(...) { cat(..., "\n"); cat(..., "\n", file = sumf, append = TRUE) }
 pt <- function(x) paste(capture.output(print(x, n = 200, width = 200)), collapse = "\n")
 
@@ -49,7 +50,7 @@ wide <- readRDS(file.path(DER, "wide.rds")) |> add_race() |>
   mutate(income_halving = -log2(income), cbcl_mean = rowMeans(across(all_of(paste0("imp_r_", WAVES)))),
          sex = factor(sex), site = factor(site))
 res <- readRDS(file.path(RES, "results_full_refit.rds"))
-files <- list.files(file.path(OUT, "cbma"), "[.]rds$", full.names = TRUE)
+files <- cbma_files()
 runs <- setNames(lapply(files, readRDS), sub("[.]rds$", "", basename(files)))
 runs <- runs[order(match(vapply(runs, `[[`, "", "scale"), names(S_LAB)),
                    match(vapply(runs, `[[`, "", "weighting"), names(W_LAB)))]
@@ -62,8 +63,9 @@ inp <- bind_rows(lapply(runs[vapply(runs, \(r) r$scale != "all", logical(1))], \
   distinct(universe_id, input_scale, method, family, k) |>
   left_join(select(res$fits, universe_id, rrr, lo, hi, top_n), by = "universe_id") |>
   mutate(scale = factor(S_LAB[input_scale], S_LAB), method = factor(method, METHODS))
-say(sprintf("Extra figures (%s): %d input solutions, %d consensus fits, n = %d.",
-            format(Sys.time(), "%Y-%m-%d %H:%M"), nrow(inp), length(runs), length(ids)))
+say(sprintf("Extra figures (%s), %s: %d input solutions, %d consensus fits, n = %d.",
+            format(Sys.time(), "%Y-%m-%d %H:%M"), CBMA_SET_LAB, nrow(inp), length(runs), length(ids)))
+say(cbma_not_run_note)
 lab_of <- function(uid) res$assign[[uid]]$class[match(ids, res$assign[[uid]]$src_subject_id)]
 L <- sapply(inp$universe_id, lab_of)              # n x inputs, classes relabelled 1..K by mean CBCL
 stopifnot(!anyNA(L))
@@ -85,7 +87,7 @@ pov_all <- function(labels, f = POV_F$adj) {
     mutate(rrr = exp(est), lo = exp(est - 1.96 * se), hi = exp(est + 1.96 * se))
 }
 cpov <- bind_rows(lapply(runs, \(r) bind_cols(lab(r)[1, ], pov_all(r$labels))))
-cp12b <- readRDS(file.path(RES, "cbma_poverty.rds")) |> filter(model == "adj")
+cp12b <- readRDS(file.path(RES, paste0("cbma_poverty", CBMA_SFX, ".rds"))) |> filter(model == "adj")
 chk <- cpov |> transmute(sc = names(S_LAB)[as.integer(scale)], wt = names(W_LAB)[as.integer(weighting)], class, rrr) |>
   left_join(cp12b, by = c(sc = "scale", wt = "weighting", "class"))
 stopifnot(nrow(chk) == nrow(cp12b), max(abs(chk$rrr.x - chk$rrr.y)) < 1e-6)   # same model as 12b_cbma_poverty.R
@@ -114,7 +116,7 @@ p1 <- ggplot(d1, aes(rrr, row)) +
   scale_x_log10() +
   labs(x = "Poverty RRR per halving of income, highest vs lowest class (log scale)", y = NULL,
        title = "Single-method solutions and the consensus",
-       subtitle = "Dots: the inputs clusterBMA combines (full_refit, one per family and all children). Diamonds: the consensus weightings.\nDotted line: the pooled all-scales consensus (equal weights). Adjusted for age, sex, site and race/ethnicity.") +
+       subtitle = paste0("Dots: the inputs clusterBMA combines (full_refit, one per family and all children). Diamonds: the consensus weightings.\nDotted line: the pooled all-scales consensus (equal weights). Adjusted for age, sex, site and race/ethnicity.\n", cbma_not_run_note)) +
   theme(legend.position = "top", legend.justification = "left")
 save(p1, "x1_rrr_inputs_vs_consensus", 8, 9)
 
@@ -230,7 +232,7 @@ p7 <- ggplot(d7, aes(a, b, fill = ari)) +
   scale_fill_gradientn(colors = c("#f4f8fd", "#86b6ef", "#3987e5", "#184f95"), limits = c(0, 1), name = "ARI") +
   scale_y_discrete(limits = rev) +
   labs(x = NULL, y = NULL, title = "Do the consensus fits agree across scales?",
-       subtitle = sprintf("ARI between the class assignments of all %d clusterBMA fits.", length(runs))) +
+       subtitle = sprintf("ARI between the class assignments of all %d clusterBMA fits. %s", length(runs), cbma_not_run_note)) +
   theme(panel.grid = element_blank(), axis.text.x = element_text(angle = 50, hjust = 1))
 save(p7, "x7_consensus_agreement", 9, 8)
 

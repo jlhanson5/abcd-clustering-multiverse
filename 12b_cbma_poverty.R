@@ -10,10 +10,11 @@
 # =============================================================================
 
 source("00_setup.R")
+source("R/cbma_set.R")   # CBMA_SET: rule (primary, default) or four
 suppressPackageStartupMessages(library(nnet))
 
 wide <- readRDS(file.path(DER, "wide.rds")) |> add_race()
-files <- sort(list.files(file.path(OUT, "cbma"), "\\.rds$", full.names = TRUE))
+files <- cbma_files()
 
 pov_fit <- function(r, model) {
   f <- POV_F[[model]]
@@ -43,7 +44,7 @@ out <- bind_rows(lapply(files, function(fn) {
   stopifnot(abs(got - stored) < 1e-6)                 # same model as 12_cbma.R
   p
 }))
-saveRDS(out, file.path(RES, "cbma_poverty.rds"))
+saveRDS(out, file.path(RES, paste0("cbma_poverty", CBMA_SFX, ".rds")))
 
 top <- out |> filter(top) |> select(scale, weighting, model, rrr, lo, hi) |>
   mutate(across(rrr:hi, \(x) round(x, 2))) |>

@@ -16,6 +16,7 @@
 # =============================================================================
 
 source("00_setup.R")
+source("R/cbma_set.R")   # g3 reads the primary set (CBMA_SET unset)
 suppressPackageStartupMessages(library(patchwork))
 
 figd <- fig_dir("6_class_gradient")
@@ -120,8 +121,8 @@ p2 <- ggplot(g2d, aes(share, method, fill = shape)) +
 save(p2, "g2_gradient_shape", 11, 4.5)
 
 # ---- g3: consensus fits ---------------------------------------------------------------------------------
-cp <- readRDS(file.path(RES, "cbma_poverty.rds")) |> filter(model == "adj")
-runs <- lapply(sort(list.files(file.path(OUT, "cbma"), "\\.rds$", full.names = TRUE)), readRDS)
+cp <- readRDS(file.path(RES, paste0("cbma_poverty", CBMA_SFX, ".rds"))) |> filter(model == "adj")
+runs <- lapply(cbma_files(), readRDS)
 cref <- bind_rows(lapply(runs, \(r) {
   m <- wide$cbcl_mean[match(r$ids[r$labels == 1], wide$src_subject_id)]
   tibble(scale = r$scale, weighting = r$weighting, class = 1L, class_mean = mean(m), n = length(m), rrr = 1, lo = 1, hi = 1)

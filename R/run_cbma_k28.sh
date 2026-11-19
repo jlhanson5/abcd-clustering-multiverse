@@ -3,16 +3,16 @@
 #   CBMA_SET=rule (default; primary, decided 2026-11-18): k-means and kml x k 2-8 x one per
 #     family / all children = 28 inputs per scale, output/cbma/.
 #   CBMA_SET=four (sensitivity): plus PAM and GBTM, 56 per scale (raw 54), output/cbma_four/.
-# K_BMA = 8. Per scale: Calinski-Harabasz, S_Dbw, equal, then averaged (started only once
-# that scale's other three exist), plus the pooled all-scales run with equal weights.
+# K_BMA = 8. Nine fits per set (decided 2026-11-19, R/cbma_set.R): Calinski-Harabasz and
+# equal on every scale, S_Dbw and averaged (started once t's other three exist) on t only,
+# since S_Dbw is undefined for some raw and log k = 8 inputs; plus the pooled all-scales
+# run with equal weights. Then 12b_cbma_poverty.R, 13_cbma_summary.R and
+# 14_extra_figures.R for the set, and 15_class_gradient.R for the primary set.
 # At most two fits at a time (about 4-5 GB each on this 16 GB Mac), counting any 12_cbma.R
-# already running (a fit already running is not started again). The second starts only
-# when memory_pressure reports >= MIN_FREE % free and the compressor is under MAX_COMP MB
-# on 3 checks 5 minutes apart, so other projects' jobs are counted. While another
-# project's targets/crew job runs, or swap is growing, fits run one at a time (2026-11-19:
-# two fits plus the crew workers thrashed the Mac). SKIP="raw sdbw,log
-# avg" leaves fits out (here for a decision still open). For the rule set, 12b_cbma_poverty.R,
-# 13_cbma_summary.R, 14_extra_figures.R and 15_class_gradient.R run afterwards.
+# already running (a fit already running is not started again). While another project's
+# targets/crew job runs, or swap is growing, fits run one at a time (2026-11-19: two fits
+# plus the crew workers thrashed the Mac); otherwise the second needs memory_pressure
+# >= MIN_FREE % free and the compressor under MAX_COMP MB on 3 checks 5 minutes apart.
 # Run from the project folder: caffeinate -i zsh R/run_cbma_k28.sh
 # The 2026-11-08 all-methods fits were moved to output/cbma_allmethods/ and their summaries
 # and figures to output/archive/pre_k28_2026-11-18/ before the first run.
@@ -45,12 +45,10 @@ headroom() {
   (( !grow && free >= MIN_FREE && comp < MAX_COMP ))
 }
 running() { pgrep -f "file=12_cbma.R" | wc -l | tr -d ' '; }
-echo "$(date '+%m-%d %H:%M')  start, set $CBMA_SET${SKIP:+, skipping $SKIP}"
-for job in "raw ch" "t ch" "log ch" "raw sdbw" "t sdbw" "log sdbw" "raw equal" "t equal" "log equal" \
-           "all equal" "raw avg" "t avg" "log avg"; do
+echo "$(date '+%m-%d %H:%M')  start, set $CBMA_SET"
+for job in "raw ch" "t ch" "log ch" "t sdbw" "raw equal" "t equal" "log equal" "all equal" "t avg"; do
   s=${job% *}; w=${job#* }
   [[ -f $D/${s}_$w.rds ]] && { echo "skip $s $w (done)"; continue; }
-  [[ ",$SKIP," == *",$job,"* ]] && { echo "skip $s $w (SKIP)"; continue; }
   pgrep -f "12_cbma.R --args $s $w" >/dev/null && { echo "skip $s $w (already running)"; continue; }
   if [[ $w == avg ]]; then
     until [[ -f $D/${s}_ch.rds && -f $D/${s}_sdbw.rds && -f $D/${s}_equal.rds ]]; do sleep 120; done
@@ -69,12 +67,12 @@ for job in "raw ch" "t ch" "log ch" "raw sdbw" "t sdbw" "log sdbw" "raw equal" "
 done
 while (( $(running) > 0 )); do sleep 300; done
 n=$(ls $D/*.rds 2>/dev/null | wc -l | tr -d ' ')
-need=$(( 13 - $(echo ${SKIP//[^,]/} | wc -c) )); [[ -z $SKIP ]] && need=13
-[[ $n -ge $need ]] || { echo "only $n of $need fits; stopping before the summaries"; exit 1; }
-[[ -n $SKIP ]] && { echo "$(date '+%m-%d %H:%M')  fits done except $SKIP; summaries wait for those"; exit 0; }
-[[ $CBMA_SET == rule ]] || { echo "$(date '+%m-%d %H:%M')  all fits done"; exit 0; }
+[[ $n -eq 9 ]] || { echo "only $n of 9 fits; stopping before the summaries"; exit 1; }
+echo "$(date '+%m-%d %H:%M')  all 9 fits done"
 Rscript --vanilla 12b_cbma_poverty.R > $L/cbma_poverty.log 2>&1 && echo "12b done" || exit 1
 Rscript --vanilla 13_cbma_summary.R > $L/cbma_summary.log 2>&1 && echo "13 done" || exit 1
-Rscript --vanilla 14_extra_figures.R > output/logs/extra_figures.log 2>&1 && echo "14 done" || exit 1
-Rscript --vanilla 15_class_gradient.R > output/logs/class_gradient.log 2>&1 && echo "15 done" || exit 1
+Rscript --vanilla 14_extra_figures.R > $L/extra_figures.log 2>&1 && echo "14 done" || exit 1
+if [[ $CBMA_SET == rule ]]; then
+  Rscript --vanilla 15_class_gradient.R > output/logs/class_gradient.log 2>&1 && echo "15 done" || exit 1
+fi
 echo "$(date '+%m-%d %H:%M')  all done"
