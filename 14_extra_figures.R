@@ -1,8 +1,8 @@
 # =============================================================================
 # 14_extra_figures.R: figures that put the single-method solutions (full_refit,
-# anchor configuration: >=3 waves imputed; since 2026-11-18 the rule input set, k-means,
-# kml, PAM and GBTM at k 2-8, one per family and all children, scored on the 8,331
-# anchor children) next to the clusterBMA consensus fits (12_cbma.R).
+# anchor configuration: >=3 waves imputed; since 2026-11-18 the primary rule input set,
+# k-means and kml at k 2-8, one per family and all children, scored on the 8,331 anchor
+# children) next to the clusterBMA consensus fits in output/cbma/ (12_cbma.R).
 #   Rscript 14_extra_figures.R
 # Figures in output/figures/5_single_vs_consensus/:
 #   x1_rrr_inputs_vs_consensus  poverty RRR of every input solution and every consensus fit
@@ -57,7 +57,7 @@ lab <- function(r) tibble(scale = factor(S_LAB[r$scale], S_LAB), weighting = fac
 ids <- runs[[1]]$ids
 stopifnot(all(vapply(runs, \(r) identical(r$ids, ids), logical(1))))
 
-# Input solutions: the ones per scale used by clusterBMA (56 in the rule set; the "all" run pools them)
+# Input solutions: the ones per scale used by clusterBMA (28 in the primary rule set; the "all" run pools them)
 inp <- bind_rows(lapply(runs[vapply(runs, \(r) r$scale != "all", logical(1))], \(r) r$inputs)) |>
   distinct(universe_id, input_scale, method, family, k) |>
   left_join(select(res$fits, universe_id, rrr, lo, hi, top_n), by = "universe_id") |>
