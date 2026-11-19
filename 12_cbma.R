@@ -8,13 +8,15 @@
 #                gets 1/5 of the weight, split equally among that k's inputs)
 #     n_sub, n_iter  smoke tests only: a random subsample of children, fewer steps
 #   Input set: environment variable CBMA_SET (default rule).
-#     rule (primary since 2026-11-15, docs/DECISIONS_memory.md): the four methods that pass
-#       the stability rule (median pairwise subsample ARI >= .75 at every k, raw and log
-#       anchors; R/cbma_rule_k28.R): k-means, kml, PAM, GBTM (age time, quadratic), k = 2-8,
-#       each method's one-per-family fit and its all-children fit (siblings included), both
-#       ge3_imp, scored on the 8,331 anchor children: 56 inputs per scale, 168 pooled.
-#       K_BMA = 8. Output output/cbma/.
-#     allmethods (the 2026-11-08 set, now the sensitivity analysis): described below.
+#     rule (primary, decided 2026-11-18, docs/DECISIONS_memory.md): the methods that pass the
+#       stability rule (median pairwise subsample ARI >= .75 at every k = 2-8, raw and log
+#       anchors; R/cbma_rule_k28.R): k-means and kml, k = 2-8, each method's one-per-family
+#       fit and its all-children fit (siblings included), both ge3_imp, scored on the 8,331
+#       anchor children: 28 inputs per scale, 84 pooled. K_BMA = 8. Output output/cbma/.
+#     four (sensitivity): the same with PAM and GBTM (age time, quadratic) added, which pass
+#       at k = 2-6 only: 56 inputs per scale (raw 54: GBTM all-children is degenerate at
+#       k = 7-8 and left out). K_BMA = 8. Output output/cbma_four/.
+#     allmethods (the 2026-11-08 set, archived): described below.
 #       K_BMA = 6. Output output/cbma_allmethods/.
 # Decided 2026-11-07. Uses the native R port, ../clusterBMA_port/R/cbma.R
 # (Forbes et al., 2023); no ABCD data goes into that repository.
@@ -55,15 +57,17 @@ stopifnot(scale %in% c("raw", "t", "log", "all"), weighting %in% c("ch", "sdbw",
 scales <- if (scale == "all") c("raw", "t", "log") else scale
 smoke <- !is.na(n_sub)
 SET <- Sys.getenv("CBMA_SET", "rule")
-stopifnot(SET %in% c("rule", "allmethods"))
-dest <- file.path(OUT, if (smoke) "cbma_smoke" else if (SET == "rule") "cbma" else "cbma_allmethods")
+stopifnot(SET %in% c("rule", "four", "allmethods"))
+dest <- file.path(OUT, if (smoke) "cbma_smoke" else switch(SET, rule = "cbma", four = "cbma_four", allmethods = "cbma_allmethods"))
 dir.create(dest, showWarnings = FALSE, recursive = TRUE)
-K_BMA <- if (SET == "rule") 8 else 6
-RULE_METHODS <- c("kmeans", "kml", "pam", "gbtm")
+K_BMA <- if (SET == "allmethods") 6 else 8
+# rule: methods passing the .75 rule at every k = 2-8 (2026-11-18); four: the four methods
+# that passed at k = 2-6, at k = 2-8 (sensitivity)
+RULE_METHODS <- if (SET == "rule") c("kmeans", "kml") else c("kmeans", "kml", "pam", "gbtm")
 
 res <- readRDS(file.path(RES, "results_full_refit.rds"))
 wide <- readRDS(file.path(DER, "wide.rds"))
-anchor <- if (SET == "rule") {
+anchor <- if (SET != "allmethods") {
   res$fits |>
     filter(family %in% c("one", "full"), config == "ge3_imp", scale %in% scales, k %in% 2:8,
            method %in% RULE_METHODS, time == ifelse(method == "gbtm", "age", "wave")) |>
@@ -75,7 +79,7 @@ anchor <- if (SET == "rule") {
     mutate(keep = is.na(error) & !degenerate &
              !(method == "gmm" & k >= 5) & !(method == "gmm" & scale == "raw" & k == 4))
 }
-if (SET == "rule") stopifnot(nrow(anchor) == 56 * length(scales))   # 4 methods x 7 k x 2 family settings
+if (SET != "allmethods") stopifnot(nrow(anchor) == 14 * length(RULE_METHODS) * length(scales))   # methods x 7 k x 2 family settings
 inputs <- filter(anchor, keep) |>
   arrange(match(scale, c("raw", "t", "log")), match(method, c("kmeans", "pam", "ward", "llpa", "kml", "gbtm", "gmm", "gbtm_link")),
           match(family, c("one", "full")), k)

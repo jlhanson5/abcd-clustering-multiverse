@@ -129,3 +129,10 @@ The task said to stop and report to Jamie if any method failed, so the clusterBM
 A first run of the check also counted the null-subsample replicates as subsamples. The file filter was fixed before the table above was produced.
 
 The other k = 7-8 replicates for k-means, kml and PAM are done (942). The GBTM replicates for the other perturbations (site, noise, null, starts) are on hold until Jamie decides.
+
+## 2026-11-18: clusterBMA input sets after the k = 2-8 rule check
+Decided by Jamie on 2026-11-18 (relayed by the main session; matches the cognition project). Jamie answered "yes" to applying the rule as written and asked not to cap k at 6.
+- **Primary (`CBMA_SET=rule`, output/cbma/):** k-means and kml at k = 2-8, using the one-per-family and all-children fits. That is 28 inputs per scale and 84 pooled, with K_BMA = 8.
+- **Sensitivity (`CBMA_SET=four`, output/cbma_four/):** all four methods that passed at k = 2-6 (k-means, kml, PAM, GBTM), at k = 2-8. That is 56 inputs per scale; raw has 54 because the two degenerate GBTM all-children fits are left out. Pooled has 166 inputs, with K_BMA = 8.
+- The 2026-11-08 all-methods fits (16 fits, K_BMA = 6) were moved to output/cbma_allmethods/. Their summaries, figures (4_clusterbma, 5_single_vs_consensus, 6_class_gradient) and cbma_poverty.rds were moved to output/archive/pre_k28_2026-11-18/. They are archived, not reported.
+- R/run_cbma_k28.sh runs the 13 fits for a set. It runs at most two at a time, and the second starts only with memory headroom (memory_pressure free >= 45% and compressor < 3 GB), because another project's targets job holds about 5.5 GB. For the primary set it then runs 12b, 13, 14 and 15. The primary fits started on 2026-11-18 at 22:30; the sensitivity fits follow.
