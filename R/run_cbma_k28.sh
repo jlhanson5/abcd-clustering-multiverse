@@ -8,7 +8,9 @@
 # At most two fits at a time (about 4-5 GB each on this 16 GB Mac), counting any 12_cbma.R
 # already running (a fit already running is not started again). The second starts only
 # when memory_pressure reports >= MIN_FREE % free and the compressor is under MAX_COMP MB
-# on 3 checks 5 minutes apart, so other projects' jobs are counted. SKIP="raw sdbw,log
+# on 3 checks 5 minutes apart, so other projects' jobs are counted. While another
+# project's targets/crew job runs, or swap is growing, fits run one at a time (2026-11-19:
+# two fits plus the crew workers thrashed the Mac). SKIP="raw sdbw,log
 # avg" leaves fits out (here for a decision still open). For the rule set, 12b_cbma_poverty.R,
 # 13_cbma_summary.R, 14_extra_figures.R and 15_class_gradient.R run afterwards.
 # Run from the project folder: caffeinate -i zsh R/run_cbma_k28.sh
@@ -36,7 +38,11 @@ headroom() {
   free=$(memory_pressure | awk '/free percentage/ {gsub("%",""); print $NF}')
   comp=$(top -l 1 | awk '/PhysMem/ {for (i=1;i<=NF;i++) if ($(i+1) ~ /compressor/) print $i}' | tr -d '(M')
   [[ $comp == *G ]] && comp=$(( ${comp%G} * 1024 ))
-  (( free >= MIN_FREE && comp < MAX_COMP ))
+  local sw; sw=$(sysctl -n vm.swapusage | awk '{gsub("M","",$6); print int($6)}')
+  local grow=$(( sw > ${LAST_SW:-999999} )); LAST_SW=$sw
+  # A second fit only when no targets/crew job is running and swap is not growing.
+  pgrep -f "targets::tar_make|crew::crew_worker" >/dev/null && return 1
+  (( !grow && free >= MIN_FREE && comp < MAX_COMP ))
 }
 running() { pgrep -f "file=12_cbma.R" | wc -l | tr -d ' '; }
 echo "$(date '+%m-%d %H:%M')  start, set $CBMA_SET${SKIP:+, skipping $SKIP}"
