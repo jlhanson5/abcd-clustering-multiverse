@@ -20,11 +20,13 @@ supplement, including the whole four-method clusterBMA sensitivity set (`*_four`
 | 2 | Decision importance | `1_spec_curve/fig7_decision_importance.png` |
 | 3 | Highest-class size vs RRR | `1_spec_curve/fig10_top_class.png` |
 | 4 | Stability: A stab1_heatmap, B stab3_null | `0_main/main4_stability.png` |
-| 5 | clusterBMA, primary set: A cbma2_trajectories, B cbma5_poverty | `0_main/main5_clusterbma.png` |
+| 5 | clusterBMA, primary set: A cbma2_trajectories, B g3_consensus_gradient (every class vs the lowest) | `0_main/main5_clusterbma.png` |
 | 6 | Poverty gradient across classes | `6_class_gradient/g1_gradient_lines.png` |
 
 Main 4 and 5 are drawn by `R/main_figures.R` from the plot objects (`*.ggrds`) that
-10_stability_figures.R and 13_cbma_summary.R save next to each PNG; rerun it after either.
+10_stability_figures.R, 13_cbma_summary.R and 15_class_gradient.R save next to each PNG; rerun
+it after any of them. Main 5B shows the whole gradient, not highest vs lowest (2026-11-20);
+its subtitle names the lowest class as the reference.
 Their single panels stay in 3_stability and 4_clusterbma.
 
 ## 1_spec_curve: the primary run (`full_refit`; 06_figures.R + 11_refit_figures.R)
@@ -75,7 +77,7 @@ figures for the four-method sensitivity set (k-means, kml, PAM, GBTM): **Supplem
 | cbma2_trajectories | Consensus classes: mean CBCL by wave, class sizes | Main 5A |
 | cbma3_uncertainty | Per-child allocation uncertainty | Supplement |
 | cbma4_agreement | ARI of each input with the consensus | Supplement |
-| cbma5_poverty | RRR, highest vs lowest class, for the 9 consensus fits (open points: without race) | Main 5B |
+| cbma5_poverty | RRR, highest vs lowest class, for the 9 consensus fits (open points: without race) | Supplement |
 | cbma6_weighting_agreement | ARI between weightings on the same scale | Supplement |
 | cbma7_uncertainty_by_class | Mean uncertainty per consensus class | Supplement |
 
@@ -103,7 +105,7 @@ Supplementary table: log and T-score consensus classes vs class 2
 |---|---|---|
 | g1_gradient_lines | Each universe's RRR across its classes, against class mean CBCL; scale x k | **Main 6** |
 | g2_gradient_shape | Share of universes whose gradient rises steadily vs has a middle class below the lowest; scale x method | Supplement |
-| g3_consensus_gradient | Every class of the 9 primary clusterBMA fits, 95% CI (primary set only) | Supplement |
+| g3_consensus_gradient | Every class of the 9 primary clusterBMA fits vs the lowest, 95% CI (primary set only) | Main 5B |
 
 ## 7_sensitivity: alternative models and the permutation test (16-18)
 
