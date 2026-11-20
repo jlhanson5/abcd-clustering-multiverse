@@ -1,6 +1,10 @@
 # =============================================================================
 # 10_stability_figures.R: stability figures (see docs/STABILITY_PLAN.md).
-#   Rscript 10_stability_figures.R full|smoke
+#   Rscript 10_stability_figures.R full|smoke [k78]
+# k78 (added 2026-11-20): also read output/stability/summary_k78.rds (09 with k78) so stab1
+# and stab3 run to k = 8. k = 7-8 exists for the four clusterBMA rule methods only (k-means,
+# kml, PAM, GBTM); the other methods stay at k 2-6 (blank cells), and k selection by
+# silhouette (stab3) runs over each method's own k range. stab2 and stab4 stay at k 2-6.
 # Main:
 #   stab1_heatmap      mean ARI by method x k; facets perturbation x anchor. Seeds
 #                      for GBTM/GMM = converged recorded starts vs the best start;
@@ -20,8 +24,20 @@ source("R/perturb.R")
 suppressPackageStartupMessages(library(patchwork))
 
 mode <- commandArgs(trailingOnly = TRUE)[1]; if (is.na(mode)) mode <- "full"
+k78  <- isTRUE(commandArgs(trailingOnly = TRUE)[2] == "k78")
 SOUT <- file.path(OUT, if (mode == "smoke") "stability_smoke" else "stability")
 S    <- readRDS(file.path(SOUT, "summary.rds"))
+KS   <- K_STAB
+if (k78) {
+  S78 <- readRDS(file.path(SOUT, "summary_k78.rds"))
+  for (n in c("pairs", "site", "starts", "base", "fits")) S[[n]] <- bind_rows(S[[n]], S78[[n]])
+  # k picked by silhouette over k 2-8, same rule as 09
+  S$ksel <- S$fits |> filter(is.na(error), k_found == k) |>
+    group_by(rep_id, anchor, method, ptype, variant, rep, part) |>
+    summarise(k_asw = k[which.max(asw)], .groups = "drop")
+  KS <- c(K_STAB, 7:8)
+}
+K78_NOTE <- if (k78) " k 7-8: k-means, kml, PAM and GBTM only." else ""
 figd <- fig_dir(if (mode == "smoke") "stability_smoke" else "stability")
 dir.create(figd, recursive = TRUE, showWarnings = FALSE)
 
@@ -59,10 +75,10 @@ h_starts <- if (nrow(S$starts)) S$starts |> filter(!is.na(converged_run)) |>
   group_by(anchor, method, k) |> summarise(ari = mean(ari_full_vs_best, na.rm = TRUE), .groups = "drop") |>
   mutate(ptype = "seed")
 h <- bind_rows(h_pairs, h_site, h_starts) |>
-  complete(anchor, method = METHODS, ptype = names(P_LAB), k = K_STAB) |>
+  complete(anchor, method = METHODS, ptype = names(P_LAB), k = KS) |>
   mutate(method = fm(method), anchor = fa(anchor), ptype = factor(P_LAB[ptype], P_LAB),
          lab = case_when(!is.na(ari) ~ sprintf("%.2f", ari),
-                         method == "ward" & ptype == P_LAB[["seed"]] ~ "det.", TRUE ~ ""))
+                         method == "ward" & ptype == P_LAB[["seed"]] & k %in% K_STAB ~ "det.", TRUE ~ ""))
 p1 <- ggplot(h, aes(factor(k), method, fill = ari)) +
   geom_tile(color = "white", linewidth = 0.8) +
   geom_text(aes(label = lab, color = !is.na(ari) & ari > 0.55), size = 2.4) +
@@ -73,7 +89,7 @@ p1 <- ggplot(h, aes(factor(k), method, fill = ari)) +
   labs(x = "k", y = NULL, title = "Do the same classes come back?",
        subtitle = paste("Mean adjusted Rand index between replicate solutions (subsamples: on shared children; site split: training half's",
                         "classes predicted\nfor the test half vs its own fit). GBTM/GMM seeds: converged recorded starts vs the best start.",
-                        "det. = deterministic (Ward), no seed variation.")) +
+                        "det. = deterministic (Ward), no seed variation.", K78_NOTE)) +
   theme(panel.grid = element_blank())
 save(p1, "stab1_heatmap", 13, 6)
 
@@ -109,7 +125,7 @@ p3a <- ggplot(ix, aes(k, value, color = data)) +
   scale_color_manual(values = c(`Real (primary run)` = BLUE, `Null (no subgroups)` = GRAY), name = NULL) +
   facet_grid(index + anchor ~ method, scales = "free_y", labeller = labeller(method = M_LAB)) +
   labs(x = "k", y = NULL, title = "Would the methods find classes in data with no subgroups?",
-       subtitle = "Null: CBCL simulated from a one-class growth model with the real children's ages. Points: mean and range over null datasets.") +
+       subtitle = paste0("Null: CBCL simulated from a one-class growth model with the real children's ages. Points: mean and range over null datasets.", K78_NOTE)) +
   theme(legend.position = "top", legend.justification = "left")
 ks <- bind_rows(
   S$base |> filter(k_found == k) |> group_by(anchor, method) |>
