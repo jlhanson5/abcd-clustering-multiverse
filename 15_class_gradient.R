@@ -147,7 +147,7 @@ p3 <- ggplot(g3d, aes(class_mean, rrr)) +
   scale_size_area(max_size = 4.5, name = "% of children", breaks = c(5, 20, 40)) +
   labs(x = "Class mean raw CBCL total (log scale)", y = "Poverty RRR vs the lowest class (95% CI, log scale)",
        title = "The full gradient in every clusterBMA consensus fit",
-       subtitle = "Adjusted for age, sex, site and race/ethnicity. On log(1+raw), equal and k-balanced weights make the lowest class a near-zero group.") +
+       subtitle = "Adjusted for age, sex, site and race/ethnicity. On log(1+raw) and T-score every fit makes the lowest class a near-zero group (mean raw CBCL 2-3), and class 2 is less poor than it.") +
   theme(legend.position = "top", legend.justification = "left")
 save(p3, "g3_consensus_gradient", 12, 8.5)
 say("\nFigures written to ", figd)

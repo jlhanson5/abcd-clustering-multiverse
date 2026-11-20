@@ -159,3 +159,22 @@ All t inputs are finite in both sets. cbma_weights needs finite, positive values
 - R/cbma_set.R holds this design, read by 12b, 13, 14 and 15. The four fits that are not run are named in the summaries and figure subtitles. Any other missing fit stops the scripts. R/run_cbma_k28.sh runs the 9 fits.
 - The sensitivity set writes to output/cbma_four, results/cbma_poverty_four.rds, figures/4_clusterbma_four and 5_single_vs_consensus_four, and the summaries with a _four suffix.
 - Run notes: raw ch took 423 min and t ch 304 min (K_BMA = 8). On 2026-11-19 a second fit started twice on brief memory dips (12:28, then 12:47 with the Mac thrashing). Both were stopped within 20 min. Fits now run one at a time while another project's targets/crew job runs or swap is growing.
+
+## 2026-11-20: reporting the consensus poverty gradient (primary set)
+Decided by Jamie on 2026-11-20, relayed by the main session. This applies to the primary clusterBMA set, whose 9 fits finished on 2026-11-19 at 22:30 (12b, 13, 14 and 15 rerun).
+- **Main text:** every consensus class against the lowest, on every scale, as 12b_cbma_poverty.R gives it. All six log and T-score fits split off a near-zero lowest class (mean raw CBCL 2.2-2.4, 13-15% of children). Class 2 is less poor than that class, about 0.89 per halving of income (1 / 1.10-1.13 below; CIs exclude 1), so the gradient is U-shaped. Raw and pooled fits rise steadily: top-class RRR 1.41 (CH) and 1.57 (equal) on raw, and 1.37 pooled.
+- The U-shape is reported as a property of those scales, as in the 2026-11-12 caveat framing. The reference class is not switched only on the scales that show it, since that would read as a choice made after seeing the results.
+- **Supplement:** a class 2 reference table for the log and T-score fits only, from R/cbma_poverty_ref2.R. Output is in results/cbma_poverty_ref2.rds and summaries/summary_cbma_poverty_ref2.txt; the four-method set gets _four versions once its fits finish. Race-adjusted results vs class 2:
+
+  | Fit | Class 1 (near-zero) | Class 3 | Top class |
+  |---|---|---|---|
+  | log ch | 1.12 (1.06-1.18) | 1.07 | 1.22 (1.16-1.27) |
+  | log equal | 1.12 (1.06-1.18) | 1.07 | 1.22 (1.16-1.27) |
+  | t ch | 1.12 (1.07-1.19) | 1.05 | 1.25 (1.20-1.31) |
+  | t sdbw | 1.10 (1.04-1.15) | 1.08 | 1.27 (1.21-1.32) |
+  | t equal (5 classes) | 1.13 (1.07-1.19) | 1.05 | 1.43 (1.34-1.52) |
+  | t avg | 1.12 (1.07-1.18) | 1.08 | 1.26 (1.20-1.31) |
+
+  t equal also has class 4 at 1.18.
+- **The runner's "Poverty RRR (highest vs lowest)" log line** is 12_cbma.R's stored model, which is age, sex and site with no race (`rrr_unadj` in summary_cbma.txt). For example raw equal shows 1.46 there against 1.57 adjusted, and t equal 1.18 against 1.26. 13, 14 (x1, x5) and 15 (g3) report the race-adjusted model from 12b, as their text says. 12b checks that its unadjusted fit reproduces the stored value.
+- The x5 and g3 subtitles now describe the near-zero class on log and T-score. The primary 14 and 15 figures need a rerun to pick that up. That waits until the four-method fits are not using the memory; the four-method run will draw its own 14.

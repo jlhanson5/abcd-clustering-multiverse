@@ -197,7 +197,7 @@ p5 <- ggplot(mapping = aes(class_mean, rrr)) +
   scale_y_log10() +
   labs(x = "Class mean raw CBCL (BL-Y3)", y = "Poverty RRR vs the lowest class (log scale)",
        title = "The poverty gradient rises with class severity",
-       subtitle = "Grey: every non-reference class of the input solutions. Coloured: consensus classes, 95% CI.\nWhen the lowest class is a small near-zero group (log scale, equal and k-balanced), every contrast shifts.") +
+       subtitle = "Grey: every non-reference class of the input solutions. Coloured: consensus classes, 95% CI.\nOn log(1+raw) and T-score the lowest class is a near-zero group (mean raw CBCL 2-3), and class 2 is less poor than it (U-shape).") +
   theme(legend.position = "top", legend.justification = "left")
 save(p5, "x5_class_gradient", 11, 4.5)
 
