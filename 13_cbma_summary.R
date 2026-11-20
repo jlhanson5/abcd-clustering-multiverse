@@ -170,7 +170,7 @@ p5 <- ggplot(pv, aes(rrr, weighting)) +
   labs(x = "Poverty RRR per halving of income, highest vs lowest consensus class (95% CI, log scale)", y = NULL,
        title = "Poverty gradient in every consensus fit",
        subtitle = paste("Filled: adjusted for age, sex, site and race/ethnicity, with 95% CI. Open: without race/ethnicity.",
-                        "Text: adjusted RRR, then the share of children in the highest and lowest classes.",
+                        "\nText: adjusted RRR, then the share of children in the highest and lowest classes.",
                         if (!smoke) paste0("\n", cbma_not_run_note) else "")) +
   theme(strip.text.y = element_text(angle = 0))
 save(p5, "cbma5_poverty", 9, 6.5)
