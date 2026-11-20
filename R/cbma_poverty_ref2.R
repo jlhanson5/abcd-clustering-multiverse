@@ -56,10 +56,17 @@ tab <- out |>
   transmute(scale, weighting, model, class, pct = round(100 * n / n_model, 1), class_mean = round(class_mean, 1),
             rrr = round(rrr, 2), ci = sprintf("%.2f-%.2f", lo, hi),
             ref_pct = round(100 * ref_n / n_model, 1), ref_mean = round(ref_mean, 1))
+# Class 1 is near-zero (mean raw CBCL under 4) in most fits, not all: in the four-method
+# set T-score S_Dbw has 3 classes and a large mild lowest class.
+c1 <- tab |> filter(model == "adj", class == 1) |> mutate(near0 = class_mean < 4)
+c1_txt <- if (all(c1$near0)) "It is a near-zero group (mean raw CBCL 2-3) in every fit." else
+  sprintf("It is a near-zero group (mean raw CBCL 2-3) in %d of %d fits; not in %s.", sum(c1$near0), nrow(c1),
+          paste(c1$scale[!c1$near0], c1$weighting[!c1$near0], collapse = ", "))
 sumf <- file.path(SUMM, paste0("summary_cbma_poverty_ref2", CBMA_SFX, ".txt"))
 txt <- c(sprintf("clusterBMA consensus fits (%s), log and T-score scales: poverty RRR per halving of income, every class vs class 2 (%s).",
                  CBMA_SET_LAB, format(Sys.time(), "%Y-%m-%d %H:%M")),
-         "Class 1 is the near-zero lowest class; class 2 is the reference here. adj: age, sex, site and race/ethnicity (primary); unadj: without race/ethnicity.",
+         paste0("Class 1 is the lowest class; class 2 is the reference here. ", c1_txt,
+                " adj: age, sex, site and race/ethnicity (primary); unadj: without race/ethnicity."),
          "pct: % of the children in the model; class_mean / ref_mean: mean raw CBCL over waves. Classes vs the lowest are in 12b_cbma_poverty.R.", "",
          capture.output(print(tab, n = 200, width = 200)))
 writeLines(txt, sumf); cat(txt, sep = "\n")

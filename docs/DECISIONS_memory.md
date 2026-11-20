@@ -178,3 +178,8 @@ Decided by Jamie on 2026-11-20, relayed by the main session. This applies to the
   t equal also has class 4 at 1.18.
 - **The runner's "Poverty RRR (highest vs lowest)" log line** is 12_cbma.R's stored model, which is age, sex and site with no race (`rrr_unadj` in summary_cbma.txt). For example raw equal shows 1.46 there against 1.57 adjusted, and t equal 1.18 against 1.26. 13, 14 (x1, x5) and 15 (g3) report the race-adjusted model from 12b, as their text says. 12b checks that its unadjusted fit reproduces the stored value.
 - The x5 and g3 subtitles now describe the near-zero class on log and T-score. The primary 14 and 15 figures need a rerun to pick that up. That waits until the four-method fits are not using the memory; the four-method run will draw its own 14.
+
+### 2026-11-20 four-method set: class 2 table and 15
+- Four-method (sensitivity) set finished 08:45: 9 fits, 12b, 13, 14. `CBMA_SET=four Rscript R/cbma_poverty_ref2.R` gives its class 2 table (summary_cbma_poverty_ref2_four.txt).
+- The near-zero lowest class holds in 5 of 6 log/T fits (mean raw CBCL 2.1-2.2, class 1 vs class 2 RRR 1.12-1.15, race-adjusted). The exception is T-score S_Dbw: 3 classes, lowest class mean 5.2 (38% of children), class 1 vs 2 RRR 0.97 (0.93-1.01), so no U-shape. 14's x5 subtitle and the ref2 header now say which fits have it, from the data.
+- 15_class_gradient.R is primary-only by design: g1 and g2 use the single-solution universes, which do not depend on the clusterBMA set, and only g3 reads a consensus set; its outputs have no set suffix, so a four-set run would overwrite the primary. The four-set per-class gradient is in 14's x5 (5_single_vs_consensus_four) and summary_extra_figures_four.txt.

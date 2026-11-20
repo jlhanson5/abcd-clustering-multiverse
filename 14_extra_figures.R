@@ -187,6 +187,15 @@ d5_cb <- cpov |> filter(scale != "All scales") |> mutate(scale = factor(scale, S
 say("\nConsensus contrasts, every class vs the lowest:")
 say(pt(cpov |> transmute(scale, weighting, class, n, class_mean = round(class_mean, 1), rrr = round(rrr, 2),
                          ci = sprintf("%.2f-%.2f", lo, hi))))
+# Which log / T fits have the U-shape (class 2 less poor than the near-zero lowest class);
+# in the four-method set T-score S_Dbw has 3 classes and no near-zero class.
+u5 <- cpov |> filter(scale %in% S_LAB[c("log", "t")], class == 2) |> mutate(u = rrr < 1)
+u5_txt <- if (all(u5$u)) {
+  "On log(1+raw) and T-score the lowest class is a near-zero group (mean raw CBCL 2-3), and class 2 is less poor than it (U-shape)."
+} else {
+  sprintf("On log(1+raw) and T-score, %d of %d fits have a near-zero lowest class (mean raw CBCL 2-3) that is poorer than class 2 (U-shape); not %s.",
+          sum(u5$u), nrow(u5), paste(u5$scale[!u5$u], u5$weighting[!u5$u], collapse = ", "))
+}
 p5 <- ggplot(mapping = aes(class_mean, rrr)) +
   geom_hline(yintercept = 1, color = INK2, linewidth = 0.4, linetype = "dashed") +
   geom_point(data = d5_in, color = GRAY, size = 1.2, alpha = 0.7) +
@@ -197,7 +206,7 @@ p5 <- ggplot(mapping = aes(class_mean, rrr)) +
   scale_y_log10() +
   labs(x = "Class mean raw CBCL (BL-Y3)", y = "Poverty RRR vs the lowest class (log scale)",
        title = "The poverty gradient rises with class severity",
-       subtitle = "Grey: every non-reference class of the input solutions. Coloured: consensus classes, 95% CI.\nOn log(1+raw) and T-score the lowest class is a near-zero group (mean raw CBCL 2-3), and class 2 is less poor than it (U-shape).") +
+       subtitle = paste0("Grey: every non-reference class of the input solutions. Coloured: consensus classes, 95% CI.\n", u5_txt)) +
   theme(legend.position = "top", legend.justification = "left")
 save(p5, "x5_class_gradient", 11, 4.5)
 
