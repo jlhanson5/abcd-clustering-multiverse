@@ -42,7 +42,11 @@ theme_set(theme_minimal(base_size = 10) +
         plot.subtitle = element_text(color = INK2),
         strip.text = element_text(color = INK, face = "bold", hjust = 0),
         plot.background = element_rect(fill = "white", color = NA)))
-save <- function(p, name, w, h) ggsave(file.path(figd, paste0(name, ".png")), p, width = w, height = h, dpi = 300)
+save <- function(p, name, w, h) {
+  ggsave(file.path(figd, paste0(name, ".png")), p, width = w, height = h, dpi = 300)
+  # The plot object (aggregates only, local) for R/main_figures.R, which combines main-figure pairs.
+  saveRDS(list(plot = p, theme = theme_get(), w = w, h = h), file.path(figd, paste0(name, ".ggrds")))
+}
 fm <- function(x) factor(x, METHODS)
 fa <- function(x) factor(A_LAB[x], A_LAB)
 

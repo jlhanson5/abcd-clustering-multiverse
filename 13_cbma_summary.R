@@ -38,7 +38,11 @@ theme_set(theme_minimal(base_size = 10) +
         plot.title = element_text(color = INK, face = "bold"), plot.subtitle = element_text(color = INK2),
         strip.text = element_text(color = INK, face = "bold", hjust = 0),
         plot.background = element_rect(fill = "white", color = NA)))
-save <- function(p, name, w, h) ggsave(file.path(figd, paste0(name, ".png")), p, width = w, height = h, dpi = 300)
+save <- function(p, name, w, h) {
+  ggsave(file.path(figd, paste0(name, ".png")), p, width = w, height = h, dpi = 300)
+  # The plot object (aggregates only, local) for R/main_figures.R, which combines main-figure pairs.
+  saveRDS(list(plot = p, theme = theme_get(), w = w, h = h), file.path(figd, paste0(name, ".ggrds")))
+}
 
 files <- if (smoke) list.files(dir, "\\.rds$", full.names = TRUE) else cbma_files()
 runs <- setNames(lapply(files, readRDS), sub("\\.rds$", "", basename(files)))

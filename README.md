@@ -34,6 +34,7 @@ Rscript 08_stability_run.R full 3 "k=7|8"; Rscript R/cbma_rule_k28.R   # stabili
 zsh R/run_cbma_k28.sh   # primary clusterBMA: k-means + kml x k 2-8 x 2 family settings = 28 inputs per scale, K_BMA = 8; 9 fits (no S_Dbw or averaged on raw and log; R/cbma_set.R), then 12b, 13, 14, 15
 Rscript R/cbma_poverty_ref2.R   # supplement: log and T consensus fits, every class vs class 2 (CBMA_SET=four for the sensitivity set)
 CBMA_SET=four zsh R/run_cbma_k28.sh   # sensitivity: + PAM and GBTM, 56 per scale (raw 54), output/cbma_four; then 12b, 13, 14 (_four outputs)
+Rscript R/main_figures.R   # Main 4 (stab1 + stab3) and Main 5 (cbma2 + cbma5, primary) in output/figures/0_main; after 10 and 13
 # archived: the 2026-11-08 all-methods set (R/run_cbma.sh + run_cbma_avg.sh, 16 fits, K_BMA = 6), in output/cbma_allmethods/
 Rscript 14_extra_figures.R    # single methods vs consensus (output/figures/5_single_vs_consensus)
 Rscript 15_class_gradient.R   # every class vs the lowest (output/figures/6_class_gradient)
