@@ -183,3 +183,7 @@ Decided by Jamie on 2026-11-20, relayed by the main session. This applies to the
 - Four-method (sensitivity) set finished 08:45: 9 fits, 12b, 13, 14. `CBMA_SET=four Rscript R/cbma_poverty_ref2.R` gives its class 2 table (summary_cbma_poverty_ref2_four.txt).
 - The near-zero lowest class holds in 5 of 6 log/T fits (mean raw CBCL 2.1-2.2, class 1 vs class 2 RRR 1.12-1.15, race-adjusted). The exception is T-score S_Dbw: 3 classes, lowest class mean 5.2 (38% of children), class 1 vs 2 RRR 0.97 (0.93-1.01), so no U-shape. 14's x5 subtitle and the ref2 header now say which fits have it, from the data.
 - 15_class_gradient.R is primary-only by design: g1 and g2 use the single-solution universes, which do not depend on the clusterBMA set, and only g3 reads a consensus set; its outputs have no set suffix, so a four-set run would overwrite the primary. The four-set per-class gradient is in 14's x5 (5_single_vs_consensus_four) and summary_extra_figures_four.txt.
+
+### 2026-11-21 GBTM k = 7-8 stability finished
+- All 84 remaining GBTM k = 7-8 replicates finished 02:08 (124 in reps_k78/, 0 errors). `09_stability_summary.R full 8 k78` and `10_stability_figures.R full k78` reran; stab1 and stab3 now show k 2-8 for k-means, kml, PAM and GBTM, and R/main_figures.R redrew Main 4.
+- .75 rule at k = 2-8 is unchanged: k-means passes (lowest median subsample ARI .772, log k8) and kml passes (.777, log k8). PAM fails (.571, log k7) and GBTM fails (.632, log k7). The primary clusterBMA set stays k-means and kml.
