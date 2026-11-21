@@ -187,3 +187,8 @@ Decided by Jamie on 2026-11-20, relayed by the main session. This applies to the
 ### 2026-11-21 GBTM k = 7-8 stability finished
 - All 84 remaining GBTM k = 7-8 replicates finished 02:08 (124 in reps_k78/, 0 errors). `09_stability_summary.R full 8 k78` and `10_stability_figures.R full k78` reran; stab1 and stab3 now show k 2-8 for k-means, kml, PAM and GBTM, and R/main_figures.R redrew Main 4.
 - .75 rule at k = 2-8 is unchanged: k-means passes (lowest median subsample ARI .772, log k8) and kml passes (.777, log k8). PAM fails (.571, log k7) and GBTM fails (.632, log k7). The primary clusterBMA set stays k-means and kml.
+
+### 2026-11-21 Stability weighting checked as a third scheme: not run
+- Idea: weight each input by its median pairwise subsample ARI (output/stability/rule_k28.rds), proportional and normalised like the index weights. It is defined for every input, unlike S_Dbw, and matches the .75 inclusion rule. Not available for T-scores (stability anchors are raw and log only).
+- Check (R/cbma_stab_weights_check.R, no fit needed because the consensus matrix is linear in the weights): stability weights are nearly flat (max/min 1.09 rule raw, 1.28 rule log, 1.64 four raw, 1.73 four log; CH 1.98-2.38) and correlate .57-.85 with the CH weights. They move the consensus matrix 9-37% as far from equal weighting as CH does (largest cell change .012-.051 vs CH .104-.118).
+- CH and equal fits already agree closely (four log ARI .89), so a stability-weighted fit would sit between them, close to the equal fit. Decision: no stability-weighted fits; the equal-weight fits stand in for it. Methods text: one sentence with these numbers.
