@@ -115,3 +115,18 @@ Supplementary table: log and T-score consensus classes vs class 2
 | s1_site_random_effects_famRE_attempt | Same, from the first run with a family random effect in full-sample universes (not used; see README) | 16_sens_site_re.R (earlier version) | Supplement |
 | s2_permutation | Observed median RRR, share with CI above 1 and Stouffer's Z against 500 permuted curves | 17_permutation.R summary | Supplement (statistic reported in the text) |
 | s3_population_weights | Each universe's RRR, unweighted vs weighted to the ACS population; by scale | 18_sens_weights.R | Supplement |
+
+## 0_methods: methods figures (R/methods_figures.R; text and simulated data only)
+
+All supplement candidates unless chosen for the main text.
+
+- `m1_pipeline.png`: the analysis pipeline, data to poverty gradient, with the robustness checks.
+- `m2_clusterbma.png`: how clusterBMA combines solutions, on simulated data (drawn by ../clusterBMA_port/tools/methods_figures.R).
+- `m3_stability.png`: the subsample stability rule on simulated data with groups and on a null copy.
+
+## 8_consensus_checks: consensus robustness checks (R/cbma_check_figures.R; supplement)
+
+- `c1_sets_poverty.png`: poverty gradient, every class vs the lowest, primary vs four-method sensitivity set.
+- `c2_sets_trajectories.png`: consensus class trajectories, primary vs sensitivity set.
+- `c3_methods_poverty.png`: poverty gradient by consensus method (clusterBMA, evidence accumulation, median partition; R/cbma_alt_consensus.R).
+- `c4_agreement.png`: ARI between consensus methods and between input sets.

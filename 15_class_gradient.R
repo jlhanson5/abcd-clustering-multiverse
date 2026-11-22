@@ -147,7 +147,7 @@ p3 <- ggplot(g3d, aes(class_mean, rrr)) +
   facet_grid(scale_lab ~ weighting) +
   scale_x_log10() + scale_y_log10() +
   scale_fill_manual(values = ORD, name = "Class (1 = lowest, reference)") +
-  guides(fill = guide_legend(override.aes = list(size = 3.5))) +
+  guides(fill = guide_legend(override.aes = list(size = 3.5)), size = guide_legend(override.aes = list(fill = "#8a8984"))) +
   scale_size_area(max_size = 4.5, name = "% of children", breaks = c(5, 20, 40)) +
   labs(x = "Class mean raw CBCL total (log scale)", y = "Poverty RRR vs the lowest class (95% CI, log scale)",
        title = "The full gradient in every clusterBMA consensus fit",
