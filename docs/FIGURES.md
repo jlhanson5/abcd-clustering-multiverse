@@ -123,6 +123,8 @@ All supplement candidates unless chosen for the main text.
 - `m1_pipeline.png`: the analysis pipeline, data to poverty gradient, with the robustness checks.
 - `m2_clusterbma.png`: how clusterBMA combines solutions, on simulated data (drawn by ../clusterBMA_port/tools/methods_figures.R).
 - `m3_stability.png`: the subsample stability rule on simulated data with groups and on a null copy.
+- `m4_forking_paths.png`: the multiverse as a decision tree; each universe is a leaf coloured by its poverty RRR (universe-level aggregates).
+- `m5_trajectories.png` to `m8_probabilities.png` (simulated data): classes slicing a continuum, the five perturbations, the consensus as a network, soft class probabilities.
 
 ## 8_consensus_checks: consensus robustness checks (R/cbma_check_figures.R; supplement)
 
